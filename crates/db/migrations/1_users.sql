@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS users (
+  id                INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  discord_id        INTEGER NOT NULL UNIQUE,
+  prompt            INTEGER          DEFAULT NULL,
+  prompt_message_id INTEGER          DEFAULT NULL,
+  welcomed          BOOLEAN NOT NULL DEFAULT FALSE
+);

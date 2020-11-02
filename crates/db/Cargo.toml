@@ -1,0 +1,22 @@
+[package]
+name    = "db"
+version = "0.0.0"
+authors = ["Casey Rodarmor <casey@rodarmor.com>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+num_enum       = "0.5.1"
+snafu          = "0.6.9"
+twilight-model = "0.3.0"
+
+model = { path = "../model" }
+
+[dependencies.sqlx]
+version  = "0.5.1"
+features = ["runtime-tokio-rustls", "sqlite"]
+
+[dependencies.tokio]
+version          = "0.2.0"
+default-features = false
+features         = ["net", "rt-core", "sync", "rt-threaded", "macros"]

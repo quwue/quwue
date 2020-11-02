@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+! rg                           \
+  --color always               \
+  --ignore-case                \
+  --glob !bin/lint             \
+  --glob !justfile             \
+  'fixme|todo|xxx|#\[ignore\]' \
