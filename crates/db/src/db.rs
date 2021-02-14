@@ -184,7 +184,7 @@ impl Db {
 mod tests {
   use super::*;
 
-  #[tokio::test(threaded_scheduler)]
+  #[tokio::test(flavor = "multi_thread")]
   async fn create_user() {
     let db = Db::new().await.unwrap();
 
@@ -207,7 +207,7 @@ mod tests {
     assert_eq!(have, want);
   }
 
-  #[tokio::test(threaded_scheduler)]
+  #[tokio::test(flavor = "multi_thread")]
   async fn update() {
     let db = Db::new().await.unwrap();
 

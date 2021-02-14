@@ -9,6 +9,7 @@ fn test<F: Future>(f: F) -> F::Output {
 
 #[instrument]
 #[test]
+#[ignore]
 fn welcome_initial_response() {
   test(async {
     let mut expect = expect!().await;
@@ -20,6 +21,7 @@ fn welcome_initial_response() {
 
 #[instrument]
 #[test]
+#[ignore]
 fn welcome_bad_message() {
   test(async {
     let mut expect = expect!().await;
@@ -33,6 +35,7 @@ fn welcome_bad_message() {
 
 #[instrument]
 #[test]
+#[ignore]
 fn welcome_confirm_message() {
   test(async {
     let mut expect = expect!().await;
@@ -46,6 +49,7 @@ fn welcome_confirm_message() {
 
 #[instrument]
 #[test]
+#[ignore]
 fn welcome_confirm_react() {
   test(async {
     let mut expect = expect!().await;
@@ -59,6 +63,7 @@ fn welcome_confirm_react() {
 
 #[instrument]
 #[test]
+#[ignore]
 fn welcome_confirm_message1() {
   test(async {
     let mut expect = expect!().await;
@@ -72,6 +77,7 @@ fn welcome_confirm_message1() {
 
 #[instrument]
 #[test]
+#[ignore]
 fn welcome_confirm_react1() {
   test(async {
     let mut expect = expect!().await;
@@ -85,6 +91,7 @@ fn welcome_confirm_react1() {
 
 #[instrument]
 #[test]
+#[ignore]
 fn welcome_confirm_message2() {
   test(async {
     let mut expect = expect!().await;
@@ -98,6 +105,7 @@ fn welcome_confirm_message2() {
 
 #[instrument]
 #[test]
+#[ignore]
 fn welcome_confirm_react2() {
   test(async {
     let mut expect = expect!().await;
@@ -112,6 +120,7 @@ fn welcome_confirm_react2() {
 #[cfg(feature = "foo")]
 #[instrument]
 #[test]
+#[ignore]
 fn candidate() {
   test(async {
     let mut a = expect!().await;

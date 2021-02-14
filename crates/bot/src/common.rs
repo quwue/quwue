@@ -55,7 +55,7 @@ pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
 #[cfg(test)]
 mod test {
   // stdlib
-  pub(crate) use std::time::Duration;
+  pub(crate) use std::time::{Duration, Instant};
 
   // dependencies
   pub(crate) use ::{
@@ -67,7 +67,7 @@ mod test {
     once_cell::sync::Lazy,
     serde::Deserialize,
     tokio::{
-      sync::{mpsc, RwLock},
+      sync::{mpsc, Mutex, RwLock},
       time,
     },
     tracing::instrument,

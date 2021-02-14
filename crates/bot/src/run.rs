@@ -10,6 +10,7 @@ pub(crate) struct Run {
   user:               discord::User,
   mailboxes:          Arc<RwLock<BTreeMap<Instance, mpsc::UnboundedSender<(MessageId, Letter)>>>>,
   run_message_parser: RunMessageParser,
+  rate_limiter:       Mutex<Instant>,
 }
 
 #[cfg(test)]
@@ -183,6 +184,7 @@ impl Run {
     info!("Run instance initialized.");
 
     Run {
+      rate_limiter: Mutex::new(Instant::now()),
       channel,
       cluster,
       guild,
@@ -266,7 +268,18 @@ impl Run {
     )
   }
 
+  pub(crate) async fn wait(&self) {
+    let mut rate_limiter = self.rate_limiter.lock().await;
+    let now = Instant::now();
+
+    if let Some(duration) = rate_limiter.checked_duration_since(now) {
+      tokio::time::sleep(duration).await;
+    }
+    *rate_limiter = Instant::now() + Duration::from_secs(2);
+  }
+
   pub(crate) async fn send(&self, instance: &Instance, msg: &str) {
+    self.wait().await;
     let content = self.run_message_parser.prefix_message(instance, msg);
     self
       .client()
@@ -278,6 +291,7 @@ impl Run {
   }
 
   pub(crate) async fn react(&self, id: MessageId, emoji: Emoji) {
+    self.wait().await;
     self
       .client()
       .create_reaction(self.channel(), id, emoji.into())

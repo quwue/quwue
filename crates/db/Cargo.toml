@@ -17,6 +17,6 @@ version  = "0.5.1"
 features = ["runtime-tokio-rustls", "sqlite"]
 
 [dependencies.tokio]
-version          = "0.2.0"
+version          = "1.0.0"
 default-features = false
-features         = ["net", "rt-core", "sync", "rt-threaded", "macros"]
+features         = ["net", "rt", "sync", "rt-multi-thread", "macros", "time"]

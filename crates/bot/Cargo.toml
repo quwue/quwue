@@ -32,7 +32,7 @@ features = ["runtime-tokio-rustls", "sqlite", "offline"]
 [dependencies.tokio]
 version          = "1.0.0"
 default-features = false
-features         = ["net", "rt", "sync", "rt-multi-thread", "macros"]
+features         = ["net", "rt", "sync", "rt-multi-thread", "macros", "time"]
 
 [dev-dependencies]
 futures     = "0.3.8"

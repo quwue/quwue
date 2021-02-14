@@ -8,8 +8,12 @@ export RUST_BACKTRACE := bt
 watch *args='check --all --tests':
 	cargo watch --clear --exec '{{args}}'
 
-test *args='--all':
-	cargo test {{args}}
+
+test *args:
+	cargo test --all -- {{args}}
+
+integration *args:
+	cargo test --all -- --test-threads 1 --ignored {{args}}
 
 run:
 	cargo run
