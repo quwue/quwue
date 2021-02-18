@@ -38,7 +38,10 @@ push: try
 	git branch | grep '* master'
 	git push bitbucket
 
-try: fmt check clippy test lint
+try: fmt check clippy test lint integration
+
+pr: push
+	hub pull-request -o
 
 clippy:
 	cargo clippy --all -- \
