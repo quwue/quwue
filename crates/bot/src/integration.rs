@@ -61,62 +61,6 @@ fn welcome_confirm_react() {
   })
 }
 
-#[instrument]
-#[test]
-#[ignore]
-fn welcome_confirm_message1() {
-  test(async {
-    let mut expect = expect!().await;
-
-    expect.send("hi").await;
-    expect.prompt(Prompt::Welcome).await;
-    expect.send("ok").await;
-    expect.prompt(Prompt::Quiescent).await;
-  })
-}
-
-#[instrument]
-#[test]
-#[ignore]
-fn welcome_confirm_react1() {
-  test(async {
-    let mut expect = expect!().await;
-
-    expect.send("hi").await;
-    let id = expect.prompt(Prompt::Welcome).await;
-    expect.react(id, Emoji::ThumbsUp).await;
-    expect.prompt(Prompt::Quiescent).await;
-  })
-}
-
-#[instrument]
-#[test]
-#[ignore]
-fn welcome_confirm_message2() {
-  test(async {
-    let mut expect = expect!().await;
-
-    expect.send("hi").await;
-    expect.prompt(Prompt::Welcome).await;
-    expect.send("ok").await;
-    expect.prompt(Prompt::Quiescent).await;
-  })
-}
-
-#[instrument]
-#[test]
-#[ignore]
-fn welcome_confirm_react2() {
-  test(async {
-    let mut expect = expect!().await;
-
-    expect.send("hi").await;
-    let id = expect.prompt(Prompt::Welcome).await;
-    expect.react(id, Emoji::ThumbsUp).await;
-    expect.prompt(Prompt::Quiescent).await;
-  })
-}
-
 #[cfg(feature = "foo")]
 #[instrument]
 #[test]
