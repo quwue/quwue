@@ -20,3 +20,11 @@ features = ["runtime-tokio-rustls", "sqlite"]
 version          = "1.0.0"
 default-features = false
 features         = ["net", "rt", "sync", "rt-multi-thread", "macros", "time"]
+
+[dev-dependencies.criterion]
+version  = "0.3"
+features = ["async_tokio", "html_reports"]
+
+[[bench]]
+name    = "user"
+harness = false
