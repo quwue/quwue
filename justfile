@@ -64,6 +64,7 @@ clippy:
 		-A clippy::panic \
 		-A clippy::pattern-type-mismatch \
 		-A clippy::print-stdout \
+		-A clippy::print-stderr \
 		-A clippy::shadow-reuse \
 		-A clippy::todo \
 		-A clippy::trivially-copy-pass-by-ref \
