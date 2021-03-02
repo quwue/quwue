@@ -43,7 +43,7 @@ fn welcome_confirm_message() {
     expect.send("hi").await;
     expect.prompt(Prompt::Welcome).await;
     expect.send("ok").await;
-    expect.prompt(Prompt::Quiescent).await;
+    expect.prompt(Prompt::Bio).await;
   })
 }
 
@@ -57,6 +57,22 @@ fn welcome_confirm_react() {
     expect.send("hi").await;
     let id = expect.prompt(Prompt::Welcome).await;
     expect.react(id, Emoji::ThumbsUp).await;
+    expect.prompt(Prompt::Bio).await;
+  })
+}
+
+#[instrument]
+#[test]
+#[ignore]
+fn set_bio() {
+  test(async {
+    let mut expect = expect!().await;
+
+    expect.send("hi").await;
+    let id = expect.prompt(Prompt::Welcome).await;
+    expect.react(id, Emoji::ThumbsUp).await;
+    expect.prompt(Prompt::Bio).await;
+    expect.send("my bio!").await;
     expect.prompt(Prompt::Quiescent).await;
   })
 }

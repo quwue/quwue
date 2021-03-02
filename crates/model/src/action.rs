@@ -1,4 +1,5 @@
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Action {
   Welcome,
+  SetBio { text: String },
 }

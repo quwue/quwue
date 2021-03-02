@@ -6,6 +6,7 @@ pub struct User {
   pub discord_id:     UserId,
   pub prompt_message: Option<PromptMessage>,
   pub welcomed:       bool,
+  pub bio:            Option<String>,
 }
 
 impl User {
@@ -20,8 +21,8 @@ impl User {
     };
 
     let action = match response {
-      Response::Message(content) => Self::action_message(prompt, content),
-      Response::Reaction(emoji) => Self::action_reaction(prompt, *emoji),
+      Response::Message(content) => Self::action_for_message(prompt, content),
+      Response::Reaction(emoji) => Self::action_for_reaction(prompt, *emoji),
       _ => None,
     };
 
@@ -35,12 +36,12 @@ impl User {
     };
 
     Update {
-      action: Some(action),
+      action: Some(action.clone()),
       prompt: self.next_prompt(action),
     }
   }
 
-  fn action_message(prompt: Prompt, content: &str) -> Option<Action> {
+  fn action_for_message(prompt: Prompt, content: &str) -> Option<Action> {
     use Prompt::*;
 
     let content = content.trim();
@@ -56,12 +57,16 @@ impl User {
         "no" => todo!(),
         _ => {},
       },
+      Bio =>
+        return Some(Action::SetBio {
+          text: content.to_string(),
+        }),
     }
 
     None
   }
 
-  fn action_reaction(prompt: Prompt, emoji: Emoji) -> Option<Action> {
+  fn action_for_reaction(prompt: Prompt, emoji: Emoji) -> Option<Action> {
     use Emoji::*;
     use Prompt::*;
 
@@ -75,6 +80,7 @@ impl User {
         ThumbsUp => todo!(),
         ThumbsDown => todo!(),
       },
+      Bio => {},
     }
 
     None
@@ -85,6 +91,13 @@ impl User {
 
     if !(self.welcomed || action == Action::Welcome) {
       return Welcome;
+    }
+
+    if self.bio.is_none() {
+      if let Action::SetBio { .. } = action {
+      } else {
+        return Bio;
+      }
     }
 
     Quiescent

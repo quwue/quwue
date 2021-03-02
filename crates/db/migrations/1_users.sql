@@ -3,5 +3,6 @@ CREATE TABLE IF NOT EXISTS users (
   discord_id        INTEGER NOT NULL UNIQUE,
   prompt            INTEGER          DEFAULT NULL,
   prompt_message_id INTEGER          DEFAULT NULL,
-  welcomed          BOOLEAN NOT NULL DEFAULT FALSE
+  welcomed          BOOLEAN NOT NULL DEFAULT FALSE,
+  bio               TEXT             DEFAULT NULL
 );

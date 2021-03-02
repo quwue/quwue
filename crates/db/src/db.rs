@@ -35,6 +35,7 @@ macro_rules! load_user {
         id:             u64::load(user.id).unwrap_infallible(),
         discord_id:     UserId::load(user.discord_id).unwrap_infallible(),
         welcomed:       user.welcomed,
+        bio:            user.bio,
         prompt_message,
       }
     }
@@ -108,6 +109,7 @@ impl Db {
       use Action::*;
       match action {
         Welcome => Self::welcome(&mut tx, user_id).await?,
+        SetBio { text } => Self::set_bio(&mut tx, user_id, &text).await?,
       }
     }
 
@@ -169,6 +171,20 @@ impl Db {
     Ok(())
   }
 
+  async fn set_bio(tx: &mut Transaction<'_>, discord_id: UserId, text: &str) -> Result<()> {
+    let discord_id = discord_id.store();
+
+    sqlx::query!(
+      "UPDATE users SET bio = ? WHERE discord_id = ?",
+      text,
+      discord_id
+    )
+    .execute(tx)
+    .await?;
+
+    Ok(())
+  }
+
   #[cfg(test)]
   async fn user_count(&self) -> Result<u64> {
     Ok(
@@ -197,6 +213,7 @@ mod tests {
       id: 1,
       prompt_message: None,
       welcomed: false,
+      bio: None,
       discord_id,
     };
     assert_eq!(have, want);
@@ -208,7 +225,7 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread")]
-  async fn update() {
+  async fn welcome() {
     let db = Db::new().await.unwrap();
 
     let discord_id = UserId(100);
@@ -219,6 +236,7 @@ mod tests {
       id: 1,
       prompt_message: None,
       welcomed: false,
+      bio: None,
       discord_id,
     };
     assert_eq!(have, want);
@@ -242,6 +260,51 @@ mod tests {
       id: 1,
       welcomed: true,
       prompt_message: Some(prompt_message),
+      bio: None,
+      discord_id,
+    };
+    assert_eq!(have, want);
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn set_bio() {
+    let db = Db::new().await.unwrap();
+
+    let discord_id = UserId(100);
+    let message_id = MessageId(200);
+
+    let have = db.user(discord_id).await.unwrap();
+    let want = User {
+      id: 1,
+      prompt_message: None,
+      welcomed: false,
+      bio: None,
+      discord_id,
+    };
+    assert_eq!(have, want);
+
+    let prompt_message = PromptMessage {
+      prompt: Prompt::Bio,
+      message_id,
+    };
+
+    let update = Update {
+      action: Some(Action::SetBio {
+        text: "bio!".to_string(),
+      }),
+      prompt: Prompt::Bio,
+    };
+
+    let tx = db.prepare(have, update).await.unwrap();
+
+    tx.commit(message_id).await.unwrap();
+
+    let have = db.user(discord_id).await.unwrap();
+    let want = User {
+      id: 1,
+      welcomed: false,
+      prompt_message: Some(prompt_message),
+      bio: Some("bio!".to_string()),
       discord_id,
     };
     assert_eq!(have, want);
