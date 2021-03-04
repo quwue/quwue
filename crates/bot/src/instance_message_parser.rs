@@ -2,20 +2,23 @@ use crate::common::*;
 
 #[derive(Clone, Debug)]
 pub(crate) struct InstanceMessageParser {
-  instance: Instance,
-  inner:    RunMessageParser,
+  test_user_id: TestUserId,
+  inner:        RunMessageParser,
 }
 
 impl InstanceMessageParser {
   #[cfg(test)]
-  pub(crate) fn new(inner: RunMessageParser, instance: Instance) -> Self {
-    Self { inner, instance }
+  pub(crate) fn new(inner: RunMessageParser, test_user_id: TestUserId) -> Self {
+    Self {
+      inner,
+      test_user_id,
+    }
   }
 
   pub(crate) fn parse<'msg>(&self, msg: &'msg str) -> Option<&'msg str> {
-    let (instance, msg) = self.inner.parse(msg)?;
+    let (test_user_id, msg) = self.inner.parse(msg)?;
 
-    if instance != self.instance {
+    if test_user_id != self.test_user_id {
       return None;
     }
 
@@ -23,7 +26,7 @@ impl InstanceMessageParser {
   }
 
   pub(crate) fn prefix_message(&self, msg: &str) -> String {
-    self.inner.prefix_message(&self.instance, msg)
+    self.inner.prefix_message(&self.test_user_id, msg)
   }
 }
 
@@ -34,14 +37,14 @@ mod tests {
   macro_rules! case {
     {
       $run:expr,
-      $test_path:expr,
+      $name:expr,
       $user:expr,
       $msg:expr,
       $want:expr $(,)?
     } => {
-      let test_path = TestPath::from_test_path_string($test_path);
+      let test_name = TestName::from_test_name($name);
       let run = RunMessageParser::new($run);
-      let instance = Instance::new(test_path, $user);
+      let instance = TestUserId::new(test_name, $user);
       let have = InstanceMessageParser::new(run, instance).parse($msg);
       assert_eq!(have, $want);
     }

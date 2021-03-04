@@ -1,7 +1,7 @@
 use crate::common::*;
 
 #[derive(Debug)]
-pub(crate) enum Letter {
+pub(crate) enum TestEvent {
   Message(String),
   Reaction(Emoji),
 }

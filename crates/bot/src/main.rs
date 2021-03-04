@@ -1,26 +1,28 @@
 #![cfg_attr(test, allow(clippy::panic))]
 
 #[cfg(test)]
-mod expect;
-#[cfg(test)]
 mod expect_var;
 #[cfg(test)]
-mod integration;
+mod integration_tests;
 #[cfg(test)]
-mod letter;
+mod test_dispatcher;
 #[cfg(test)]
-mod run;
+mod test_event;
+#[cfg(test)]
+mod test_message;
+#[cfg(test)]
+mod test_user;
 
 mod async_static;
 mod bot;
 mod common;
 mod error;
-mod instance;
 mod instance_message_parser;
 mod logging;
 mod run_message_parser;
 mod runtime;
-mod test_path;
+mod test_name;
+mod test_user_id;
 
 fn main() {
   use crate::common::*;

@@ -101,7 +101,7 @@ impl Bot {
           channel_id,
           &format!(
             "Internal error: {}\n\nThis is a bug in Quwue.",
-            err.message()
+            err.user_facing_message()
           ),
         )
         .await?;

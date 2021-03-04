@@ -5,23 +5,23 @@ use std::sync::Mutex;
 #[macro_export]
 macro_rules! instance {
   () => {
-    Instance::new(test_path!())
+    TestUserId::new(test_path!())
   };
 }
 
 lazy_static::lazy_static! {
-  static ref NEXT_USER_MAP: Mutex<BTreeMap<TestPath, u64>> = Mutex::new(BTreeMap::new());
+  static ref NEXT_USER_MAP: Mutex<BTreeMap<TestName, u64>> = Mutex::new(BTreeMap::new());
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) struct Instance {
-  test_path: TestPath,
+pub(crate) struct TestUserId {
+  test_path: TestName,
   user:      u64,
 }
 
-impl Instance {
+impl TestUserId {
   #[cfg(test)]
-  pub(crate) fn next(test_path: TestPath) -> Self {
+  pub(crate) fn next(test_path: TestName) -> Self {
     let mut next_user_map = NEXT_USER_MAP.lock().unwrap();
 
     if !next_user_map.contains_key(&test_path) {
@@ -37,12 +37,12 @@ impl Instance {
     instance
   }
 
-  pub(crate) fn new(test_path: TestPath, user: u64) -> Self {
+  pub(crate) fn new(test_path: TestName, user: u64) -> Self {
     Self { test_path, user }
   }
 }
 
-impl Display for Instance {
+impl Display for TestUserId {
   fn fmt(&self, f: &mut Formatter) -> fmt::Result {
     write!(f, "{}.{}", self.test_path, self.user)
   }

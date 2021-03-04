@@ -1,14 +1,14 @@
 use crate::common::*;
 
 #[derive(Debug)]
-pub(crate) struct Run {
+pub(crate) struct TestDispatcher {
   channel:            TextChannel,
   cluster:            Cluster,
   guild:              Guild,
   member:             Member,
-  n:                  u64,
+  test_run:           u64,
   user:               discord::User,
-  mailboxes:          Arc<RwLock<BTreeMap<Instance, mpsc::UnboundedSender<(MessageId, Letter)>>>>,
+  channels: Arc<RwLock<BTreeMap<TestUserId, mpsc::UnboundedSender<(MessageId, TestEvent)>>>>,
   run_message_parser: RunMessageParser,
   rate_limiter:       Mutex<Instant>,
 }
@@ -16,17 +16,17 @@ pub(crate) struct Run {
 #[cfg(test)]
 async_static! {
   test_run,
-  Run,
+  TestDispatcher,
   {
     logging::init();
-    Run::init().await
+    TestDispatcher::init().await
   }
 }
 
 #[cfg(test)]
 async_static! {
   dispatch,
-  &'static Run,
+  &'static TestDispatcher,
   {
     let run = test_run::get().await;
 
@@ -38,7 +38,7 @@ async_static! {
   }
 }
 
-impl Run {
+impl TestDispatcher {
   async fn dispatch(&self) {
     let mut events = self
       .cluster
@@ -54,10 +54,16 @@ impl Run {
             continue;
           }
 
+          if let Some(test_message) = TestMessage::parse(&message.content) {
+            if test_message.test_run != self.test_run {
+              continue;
+            }
+          }
+
           if let Some((instance, content)) = self.run_message_parser.parse(&message.content) {
-            if let Some(mailbox) = self.mailboxes.read().await.get(&instance) {
-              mailbox
-                .send((message.id, Letter::Message(content.into())))
+            if let Some(channel) = self.channels.read().await.get(&instance) {
+              channel
+                .send((message.id, TestEvent::Message(content.into())))
                 .expect("message send failed");
             }
           }
@@ -86,10 +92,16 @@ impl Run {
             .unwrap()
             .unwrap();
 
-          if let Some((instance, _message)) = self.run_message_parser.parse(&message.content) {
-            if let Some(mailbox) = self.mailboxes.read().await.get(&instance) {
-              mailbox
-                .send((message.id, Letter::Reaction(emoji)))
+          if let Some(test_message) = TestMessage::parse(&message.content) {
+            if test_message.test_run != self.test_run {
+              continue;
+            }
+          }
+
+          if let Some((instance, _content)) = self.run_message_parser.parse(&message.content) {
+            if let Some(channel) = self.channels.read().await.get(&instance) {
+              channel
+                .send((message.id, TestEvent::Reaction(emoji)))
                 .expect("message send failed");
             }
           }
@@ -99,14 +111,14 @@ impl Run {
     }
   }
 
-  pub(crate) async fn get() -> &'static Run {
+  pub(crate) async fn get() -> &'static TestDispatcher {
     dispatch::get().await
   }
 
-  async fn init() -> Run {
+  async fn init() -> TestDispatcher {
     info!("Initializing run instance…");
 
-    let cluster = Run::initialize_cluster().await;
+    let cluster = TestDispatcher::initialize_cluster().await;
 
     let client = cluster.config().http_client();
 
@@ -157,41 +169,41 @@ impl Run {
       .unwrap()
       .unwrap();
 
-    let n = member
+    let test_run = member
       .nick
       .as_ref()
       .and_then(|nick| nick.parse::<u64>().map(|n| n + 1).ok())
       .unwrap_or(0);
 
     client
-      .update_current_user_nick(guild.id, n.to_string())
+      .update_current_user_nick(guild.id, test_run.to_string())
       .await
       .unwrap();
 
-    info!("Started test run {}.", n);
+    info!("Started test run {}.", test_run);
 
     client
       .create_message(channel.id)
-      .content(format!("**Test Run {}**", n))
+      .content(format!("**Test Run {}**", test_run))
       .unwrap()
       .await
       .unwrap();
 
-    let mailboxes = Arc::new(RwLock::new(BTreeMap::new()));
+    let channels = Arc::new(RwLock::new(BTreeMap::new()));
 
-    let run_message_parser = RunMessageParser::new(n);
+    let run_message_parser = RunMessageParser::new(test_run);
 
-    info!("Run instance initialized.");
+    info!("TestDispatcher instance initialized.");
 
-    Run {
+    Self {
       rate_limiter: Mutex::new(Instant::now()),
       channel,
       cluster,
       guild,
-      mailboxes,
+      channels,
       run_message_parser,
       member,
-      n,
+      test_run,
       user,
     }
   }
@@ -248,23 +260,23 @@ impl Run {
     cluster
   }
 
-  pub(crate) async fn register(
+  pub(crate) async fn register_test_user(
     &self,
-    instance: &Instance,
+    test_user_id: &TestUserId,
   ) -> (
-    mpsc::UnboundedReceiver<(MessageId, Letter)>,
+    mpsc::UnboundedReceiver<(MessageId, TestEvent)>,
     InstanceMessageParser,
   ) {
-    let (snd, rcv) = mpsc::unbounded_channel();
-    let mut mailboxes = self.mailboxes.write().await;
-    if mailboxes.insert(instance.clone(), snd).is_some() {
-      panic!("Second mailbox for instance {}!", instance);
+    let (tx, rx) = mpsc::unbounded_channel();
+    let mut channel = self.channels.write().await;
+    if channel.insert(test_user_id.clone(), tx).is_some() {
+      panic!("Second channel for test user {}!", test_user_id);
     }
     (
-      rcv,
+      rx,
       self
         .run_message_parser
-        .instance_message_parser(instance.clone()),
+        .instance_message_parser(test_user_id.clone()),
     )
   }
 
@@ -278,7 +290,7 @@ impl Run {
     *rate_limiter = Instant::now() + Duration::from_secs(2);
   }
 
-  pub(crate) async fn send(&self, instance: &Instance, msg: &str) {
+  pub(crate) async fn send_message(&self, instance: &TestUserId, msg: &str) {
     self.wait().await;
     let content = self.run_message_parser.prefix_message(instance, msg);
     self
@@ -290,7 +302,7 @@ impl Run {
       .unwrap();
   }
 
-  pub(crate) async fn react(&self, id: MessageId, emoji: Emoji) {
+  pub(crate) async fn send_reaction(&self, id: MessageId, emoji: Emoji) {
     self.wait().await;
     self
       .client()

@@ -37,7 +37,7 @@ pub(crate) enum Error {
 }
 
 impl Error {
-  pub(crate) fn message(&self) -> String {
+  pub(crate) fn user_facing_message(&self) -> String {
     match self {
       Self::Token { .. } => "Failed to get authentication token from environment.".into(),
       Self::ClusterStart { .. } => "Discord gateway error.".into(),

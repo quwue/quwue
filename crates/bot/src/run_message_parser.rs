@@ -11,7 +11,7 @@ impl RunMessageParser {
     Self { run }
   }
 
-  pub(crate) fn parse<'msg>(&self, msg: &'msg str) -> Option<(Instance, &'msg str)> {
+  pub(crate) fn parse<'msg>(&self, msg: &'msg str) -> Option<(TestUserId, &'msg str)> {
     let mut chars = msg.chars();
 
     // skip prefix
@@ -65,19 +65,19 @@ impl RunMessageParser {
 
     let message = chars.as_str();
 
-    let instance = Instance::new(TestPath::from_test_path_string(path), user?);
+    let test_user_id = TestUserId::new(TestName::from_test_name(path), user?);
 
-    Some((instance, message))
+    Some((test_user_id, message))
   }
 
   #[cfg(test)]
-  pub(crate) fn instance_message_parser(self, instance: Instance) -> InstanceMessageParser {
-    InstanceMessageParser::new(self, instance)
+  pub(crate) fn instance_message_parser(self, test_user_id: TestUserId) -> InstanceMessageParser {
+    InstanceMessageParser::new(self, test_user_id)
   }
 
-  pub(crate) fn prefix_message(self, instance: &Instance, msg: &str) -> String {
+  pub(crate) fn prefix_message(self, test_user_id: &TestUserId, msg: &str) -> String {
     let mut prefixed = String::new();
-    write!(prefixed, "test-{}-{} {}", self.run, instance, msg).unwrap();
+    write!(prefixed, "test-{}-{} {}", self.run, test_user_id, msg).unwrap();
     prefixed
   }
 }
@@ -94,7 +94,7 @@ mod tests {
     } => {
       let have = RunMessageParser::new($run).parse($msg);
       let want = $want.map(|(path, user, content)|
-        (Instance::new(TestPath::from_test_path_string(path), user), content)
+        (TestUserId::new(TestName::from_test_name(path), user), content)
       );
       assert_eq!(have, want);
     }
