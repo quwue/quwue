@@ -4,5 +4,6 @@ CREATE TABLE IF NOT EXISTS users (
   prompt            INTEGER          DEFAULT NULL,
   prompt_message_id INTEGER          DEFAULT NULL,
   welcomed          BOOLEAN NOT NULL DEFAULT FALSE,
-  bio               TEXT             DEFAULT NULL
+  bio               TEXT             DEFAULT NULL,
+  profile_image_url TEXT             DEFAULT NULL
 );

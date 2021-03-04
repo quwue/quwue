@@ -12,6 +12,7 @@ pub enum Prompt {
   Quiescent,
   Candidate,
   Bio,
+  ProfileImage,
 }
 
 impl Prompt {
@@ -33,6 +34,7 @@ impl Prompt {
 
       Candidate => "TODO".into(),
       Bio => "Please enter a bio to show to other users.".into(),
+      ProfileImage => "Please enter your profile photo.".into(),
     }
   }
 
@@ -42,6 +44,7 @@ impl Prompt {
       Quiescent => vec![],
       Candidate => vec![ThumbsDown, ThumbsUp],
       Bio => vec![],
+      ProfileImage => vec![],
     }
   }
 

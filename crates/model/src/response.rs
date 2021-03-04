@@ -3,6 +3,7 @@ use crate::common::*;
 #[derive(Debug, Eq, PartialEq)]
 pub enum Response {
   Message(String),
+  Image(Url),
   Reaction(Emoji),
   UnrecognizedReaction(String),
   Custom(EmojiId),
@@ -11,6 +12,10 @@ pub enum Response {
 impl Response {
   pub fn message(content: &str) -> Response {
     Self::Message(content.to_owned())
+  }
+
+  pub fn image(url: Url) -> Response {
+    Self::Image(url)
   }
 
   pub fn unicode_reaction(chars: String) -> Response {

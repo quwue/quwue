@@ -31,11 +31,18 @@ macro_rules! load_user {
         }),
       };
 
+      let profile_image_url =  if let Some(text) = user.profile_image_url {
+        Some(text.parse().context(error::UrlLoad { text })?)
+      } else {
+        None
+      };
+
       User {
         id:             u64::load(user.id).unwrap_infallible(),
         discord_id:     UserId::load(user.discord_id).unwrap_infallible(),
         welcomed:       user.welcomed,
         bio:            user.bio,
+        profile_image_url,
         prompt_message,
       }
     }
@@ -110,6 +117,7 @@ impl Db {
       match action {
         Welcome => Self::welcome(&mut tx, user_id).await?,
         SetBio { text } => Self::set_bio(&mut tx, user_id, &text).await?,
+        SetProfileImage { url } => Self::set_profile_image(&mut tx, user_id, &url).await?,
       }
     }
 
@@ -185,6 +193,25 @@ impl Db {
     Ok(())
   }
 
+  async fn set_profile_image(
+    tx: &mut Transaction<'_>,
+    discord_id: UserId,
+    url: &Url,
+  ) -> Result<()> {
+    let discord_id = discord_id.store();
+    let url = url.as_str();
+
+    sqlx::query!(
+      "UPDATE users SET profile_image_url = ? where discord_id = ?",
+      url,
+      discord_id
+    )
+    .execute(tx)
+    .await?;
+
+    Ok(())
+  }
+
   #[cfg(test)]
   async fn user_count(&self) -> Result<u64> {
     Ok(
@@ -214,6 +241,7 @@ mod tests {
       prompt_message: None,
       welcomed: false,
       bio: None,
+      profile_image_url: None,
       discord_id,
     };
     assert_eq!(have, want);
@@ -237,6 +265,7 @@ mod tests {
       prompt_message: None,
       welcomed: false,
       bio: None,
+      profile_image_url: None,
       discord_id,
     };
     assert_eq!(have, want);
@@ -261,6 +290,7 @@ mod tests {
       welcomed: true,
       prompt_message: Some(prompt_message),
       bio: None,
+      profile_image_url: None,
       discord_id,
     };
     assert_eq!(have, want);
@@ -279,6 +309,7 @@ mod tests {
       prompt_message: None,
       welcomed: false,
       bio: None,
+      profile_image_url: None,
       discord_id,
     };
     assert_eq!(have, want);
@@ -305,6 +336,53 @@ mod tests {
       welcomed: false,
       prompt_message: Some(prompt_message),
       bio: Some("bio!".to_string()),
+      profile_image_url: None,
+      discord_id,
+    };
+    assert_eq!(have, want);
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn set_profile_image_url() {
+    let db = Db::new().await.unwrap();
+
+    let discord_id = UserId(100);
+    let message_id = MessageId(200);
+
+    let have = db.user(discord_id).await.unwrap();
+    let want = User {
+      id: 1,
+      prompt_message: None,
+      welcomed: false,
+      bio: None,
+      profile_image_url: None,
+      discord_id,
+    };
+    assert_eq!(have, want);
+
+    let prompt_message = PromptMessage {
+      prompt: Prompt::ProfileImage,
+      message_id,
+    };
+
+    let update = Update {
+      action: Some(Action::SetProfileImage {
+        url: "https://www.google.com".parse().unwrap(),
+      }),
+      prompt: Prompt::ProfileImage,
+    };
+
+    let tx = db.prepare(have, update).await.unwrap();
+
+    tx.commit(message_id).await.unwrap();
+
+    let have = db.user(discord_id).await.unwrap();
+    let want = User {
+      id: 1,
+      welcomed: false,
+      prompt_message: Some(prompt_message),
+      bio: None,
+      profile_image_url: Some("https://www.google.com".parse().unwrap()),
       discord_id,
     };
     assert_eq!(have, want);

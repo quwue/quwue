@@ -155,15 +155,20 @@ impl Bot {
       message.content.as_str()
     };
 
+    fn extract_image_url(message: &MessageCreate) -> Option<String> {
+      message.embeds.first()?.image.as_ref()?.url.to_owned()
+    }
+
+    let response = if let Some(text) = extract_image_url(&message) {
+      Response::image(text.parse().context(error::EmbedImageUrlParse { text })?)
+    } else {
+      Response::message(content)
+    };
+
     let user = self.db.user(message.author.id).await?;
 
     self
-      .handle_response(
-        message.author.bot,
-        user,
-        message.channel_id,
-        Response::message(content),
-      )
+      .handle_response(message.author.bot, user, message.channel_id, response)
       .await?;
 
     Ok(())

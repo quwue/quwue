@@ -5,6 +5,7 @@ pub(crate) use std::convert::{Infallible, TryFrom};
 pub(crate) use num_enum::TryFromPrimitiveError;
 pub(crate) use snafu::{ResultExt, Snafu};
 pub(crate) use twilight_model::id::{MessageId, UserId};
+pub(crate) use url::Url;
 
 // local dependencies
 pub(crate) use model::{Action, Prompt, PromptMessage, Update, User};

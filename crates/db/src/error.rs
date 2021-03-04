@@ -17,6 +17,10 @@ pub enum Error {
   Bool {
     storage: i64,
   },
+  UrlLoad {
+    source: url::ParseError,
+    text:   String,
+  },
 }
 
 impl From<sqlx::migrate::MigrateError> for Error {

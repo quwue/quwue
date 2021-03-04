@@ -9,6 +9,7 @@ publish = false
 num_enum       = "0.5.1"
 twilight-http  = "0.3.0"
 twilight-model = "0.3.0"
+url            = "2.2.1"
 
 [dependencies.strum]
 version  = "0.20"

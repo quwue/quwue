@@ -29,6 +29,11 @@ pub(crate) enum Error {
   Runtime { source: io::Error },
   #[snafu(display("Failed to retrieve Discord user by ID: {}", user_id))]
   UserUnavailable { user_id: UserId },
+  #[snafu(display("Failed to parse embed image URL: {}", source))]
+  EmbedImageUrlParse {
+    source: url::ParseError,
+    text:   String,
+  },
 }
 
 impl Error {
@@ -61,6 +66,7 @@ impl Error {
       Self::Migration { .. } => "Database migration error.".into(),
       Self::Runtime { .. } => "Failed to initialize runtime.".into(),
       Self::UserUnavailable { .. } => "Failed to retrieve Discord user by ID.".into(),
+      Self::EmbedImageUrlParse { .. } => "Failed to parse embed image URL.".into(),
     }
   }
 }

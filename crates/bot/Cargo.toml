@@ -20,6 +20,7 @@ twilight-cache-inmemory = "0.3.0"
 twilight-gateway        = "0.3.0"
 twilight-http           = "0.3.0"
 twilight-model          = "0.3.0"
+url                     = "2.2.1"
 
 db      = { path = "../db"      }
 discord = { path = "../discord" }
