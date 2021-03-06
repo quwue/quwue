@@ -44,9 +44,7 @@ pub(crate) use crate::{async_static, error, logging, runtime};
 
 // structs and enums
 pub(crate) use crate::{
-  bot::Bot, error::Error, instance_message_parser::InstanceMessageParser,
-  run_message_parser::RunMessageParser, test_message::TestMessage, test_name::TestName,
-  test_user_id::TestUserId,
+  bot::Bot, error::Error, test_id::TestId, test_message::TestMessage, test_user_id::TestUserId,
 };
 
 // type aliases
@@ -83,13 +81,16 @@ mod test {
   pub(crate) use model::{Emoji, Prompt};
 
   // macros
-  pub(crate) use crate::test_user;
+  pub(crate) use crate::test_bot;
 
   // functions
   pub(crate) use crate::expect_var::expect_var;
 
   // structs and enums
-  pub(crate) use crate::{test_dispatcher::TestDispatcher, test_event::TestEvent};
+  pub(crate) use crate::{
+    test_dispatcher::TestDispatcher, test_event::TestEvent, test_run_id::TestRunId,
+    test_user::TestUser,
+  };
 }
 
 #[cfg(test)]

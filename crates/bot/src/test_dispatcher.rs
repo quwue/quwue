@@ -2,20 +2,19 @@ use crate::common::*;
 
 #[derive(Debug)]
 pub(crate) struct TestDispatcher {
-  channel:            TextChannel,
-  cluster:            Cluster,
-  guild:              Guild,
-  member:             Member,
-  test_run:           u64,
-  user:               discord::User,
-  channels: Arc<RwLock<BTreeMap<TestUserId, mpsc::UnboundedSender<(MessageId, TestEvent)>>>>,
-  run_message_parser: RunMessageParser,
-  rate_limiter:       Mutex<Instant>,
+  channel:      TextChannel,
+  cluster:      Cluster,
+  guild:        Guild,
+  member:       Member,
+  test_run_id:  TestRunId,
+  user:         discord::User,
+  channels:     Arc<RwLock<BTreeMap<TestUserId, mpsc::UnboundedSender<(MessageId, TestEvent)>>>>,
+  rate_limiter: Mutex<Instant>,
 }
 
 #[cfg(test)]
 async_static! {
-  test_run,
+  test_dispatcher_value,
   TestDispatcher,
   {
     logging::init();
@@ -25,10 +24,10 @@ async_static! {
 
 #[cfg(test)]
 async_static! {
-  dispatch,
+  test_dispatcher_instance,
   &'static TestDispatcher,
   {
-    let run = test_run::get().await;
+    let run = test_dispatcher_value::get().await;
 
     tokio::spawn(async move {
       run.dispatch().await;
@@ -54,16 +53,10 @@ impl TestDispatcher {
             continue;
           }
 
-          if let Some(test_message) = TestMessage::parse(&message.content) {
-            if test_message.test_run != self.test_run {
-              continue;
-            }
-          }
-
-          if let Some((instance, content)) = self.run_message_parser.parse(&message.content) {
-            if let Some(channel) = self.channels.read().await.get(&instance) {
+          if let Some(test_message) = self.test_run_id.filter(&message.content) {
+            if let Some(channel) = self.channels.read().await.get(&test_message.test_user_id()) {
               channel
-                .send((message.id, TestEvent::Message(content.into())))
+                .send((message.id, TestEvent::Message(test_message.text)))
                 .expect("message send failed");
             }
           }
@@ -92,14 +85,8 @@ impl TestDispatcher {
             .unwrap()
             .unwrap();
 
-          if let Some(test_message) = TestMessage::parse(&message.content) {
-            if test_message.test_run != self.test_run {
-              continue;
-            }
-          }
-
-          if let Some((instance, _content)) = self.run_message_parser.parse(&message.content) {
-            if let Some(channel) = self.channels.read().await.get(&instance) {
+          if let Some(test_message) = self.test_run_id.filter(&message.content) {
+            if let Some(channel) = self.channels.read().await.get(&test_message.test_user_id()) {
               channel
                 .send((message.id, TestEvent::Reaction(emoji)))
                 .expect("message send failed");
@@ -111,8 +98,12 @@ impl TestDispatcher {
     }
   }
 
-  pub(crate) async fn get() -> &'static TestDispatcher {
-    dispatch::get().await
+  pub(crate) async fn get_instance() -> &'static TestDispatcher {
+    test_dispatcher_instance::get().await
+  }
+
+  pub(crate) fn test_run_id(&self) -> TestRunId {
+    self.test_run_id
   }
 
   async fn init() -> TestDispatcher {
@@ -191,19 +182,16 @@ impl TestDispatcher {
 
     let channels = Arc::new(RwLock::new(BTreeMap::new()));
 
-    let run_message_parser = RunMessageParser::new(test_run);
-
     info!("TestDispatcher instance initialized.");
 
     Self {
       rate_limiter: Mutex::new(Instant::now()),
+      test_run_id: TestRunId::new(test_run),
       channel,
       cluster,
       guild,
       channels,
-      run_message_parser,
       member,
-      test_run,
       user,
     }
   }
@@ -263,21 +251,13 @@ impl TestDispatcher {
   pub(crate) async fn register_test_user(
     &self,
     test_user_id: &TestUserId,
-  ) -> (
-    mpsc::UnboundedReceiver<(MessageId, TestEvent)>,
-    InstanceMessageParser,
-  ) {
+  ) -> mpsc::UnboundedReceiver<(MessageId, TestEvent)> {
     let (tx, rx) = mpsc::unbounded_channel();
     let mut channel = self.channels.write().await;
     if channel.insert(test_user_id.clone(), tx).is_some() {
       panic!("Second channel for test user {}!", test_user_id);
     }
-    (
-      rx,
-      self
-        .run_message_parser
-        .instance_message_parser(test_user_id.clone()),
-    )
+    rx
   }
 
   pub(crate) async fn wait(&self) {
@@ -290,9 +270,9 @@ impl TestDispatcher {
     *rate_limiter = Instant::now() + Duration::from_secs(2);
   }
 
-  pub(crate) async fn send_message(&self, instance: &TestUserId, msg: &str) {
+  pub(crate) async fn send_message(&self, test_user_id: &TestUserId, msg: &str) {
     self.wait().await;
-    let content = self.run_message_parser.prefix_message(instance, msg);
+    let content = self.test_run_id.prefix_message(test_user_id, msg);
     self
       .client()
       .create_message(self.channel())

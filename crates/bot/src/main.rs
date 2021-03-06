@@ -5,11 +5,17 @@ mod expect_var;
 #[cfg(test)]
 mod integration_tests;
 #[cfg(test)]
+mod test_bot;
+#[cfg(test)]
 mod test_dispatcher;
 #[cfg(test)]
 mod test_event;
 #[cfg(test)]
+mod test_id;
+#[cfg(test)]
 mod test_message;
+#[cfg(test)]
+mod test_run_id;
 #[cfg(test)]
 mod test_user;
 
@@ -17,9 +23,7 @@ mod async_static;
 mod bot;
 mod common;
 mod error;
-mod instance_message_parser;
 mod logging;
-mod run_message_parser;
 mod runtime;
 mod test_name;
 mod test_user_id;

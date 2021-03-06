@@ -10,8 +10,8 @@ pub enum Response {
 }
 
 impl Response {
-  pub fn message(content: &str) -> Response {
-    Self::Message(content.to_owned())
+  pub fn message(content: impl Into<String>) -> Response {
+    Self::Message(content.into())
   }
 
   pub fn image(url: Url) -> Response {

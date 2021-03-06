@@ -4,7 +4,7 @@ async_static! {
   test_cluster,
   Cluster,
   {
-    Bot::cluster_inner(true)
+    Bot::initialize_cluster(true)
       .await
       .expect("Failed to initialize test cluster")
   }
@@ -18,10 +18,10 @@ pub(crate) struct Bot {
 #[derive(Debug)]
 pub(crate) struct Inner {
   cluster: Cluster,
-  instance_message_parser: Option<InstanceMessageParser>,
-  user: discord::User,
-  cache: InMemoryCache,
-  db: Db,
+  test_id: Option<TestId>,
+  user:    discord::User,
+  cache:   InMemoryCache,
+  db:      Db,
 }
 
 impl Deref for Bot {
@@ -44,7 +44,7 @@ impl Bot {
   }
 
   pub(crate) fn is_test(&self) -> bool {
-    self.instance_message_parser.is_some()
+    self.test_id.is_some()
   }
 
   pub(crate) async fn run(self) -> Result<()> {
@@ -83,27 +83,26 @@ impl Bot {
 
     self.cache.update(&event);
 
-    let channel_id = match &event {
-      Event::MessageCreate(message_create) => message_create.channel_id,
-      Event::ReactionAdd(reaction_add) => reaction_add.channel_id,
+    let (channel_id, result) = match event {
+      Event::MessageCreate(message_create) => (
+        message_create.channel_id,
+        self.handle_message_create(*message_create).await,
+      ),
+      Event::ReactionAdd(reaction_add) => (
+        reaction_add.channel_id,
+        self.handle_reaction_add(*reaction_add).await,
+      ),
       _ => return Err(Error::UnexpectedEvent { event }),
-    };
-
-    let result = match event {
-      Event::MessageCreate(message_create) => self.handle_message_create(*message_create).await,
-      Event::ReactionAdd(reaction_add) => self.handle_reaction_add(*reaction_add).await,
-      _ => Err(Error::UnexpectedEvent { event }),
     };
 
     if let Err(err) = result {
       self
-        .create_message(
-          channel_id,
-          &format!(
-            "Internal error: {}\n\nThis is a bug in Quwue.",
-            err.user_facing_message()
-          ),
-        )
+        .client()
+        .create_message(channel_id)
+        .content(&format!(
+          "Internal error: {}\n\nThis is a bug in Quwue.",
+          err.user_facing_message()
+        ))?
         .await?;
     }
 
@@ -113,14 +112,29 @@ impl Bot {
   async fn handle_reaction_add(&self, reaction_add: ReactionAdd) -> Result<()> {
     let ReactionAdd(reaction) = reaction_add;
 
-    let user_id = reaction.user_id;
+    let sender = self.client().user(reaction.user_id).await?;
 
-    let user = self.client().user(user_id).await?;
-
-    let bot = if let Some(user) = user {
-      user.bot
+    let bot = if let Some(sender) = sender {
+      sender.bot
     } else {
-      return Err(Error::UserUnavailable { user_id });
+      return Err(Error::UserUnavailable {
+        user_id: reaction.user_id,
+      });
+    };
+
+    let user_id = if self.is_test() {
+      let message = self
+        .client()
+        .message(reaction.channel_id, reaction.message_id)
+        .await?
+        .expect("failed to retrieve reaction message");
+
+      let test_message =
+        TestMessage::parse(&message.content).expect("failed to parse reaction message");
+
+      test_message.test_user_id().into_discord_user_id()
+    } else {
+      reaction.user_id
     };
 
     let user = self.db.user(user_id).await?;
@@ -139,20 +153,28 @@ impl Bot {
     };
 
     self
-      .handle_response(bot, user, reaction.channel_id, response)
+      .handle_response(bot, reaction.user_id, user, reaction.channel_id, response)
       .await?;
 
     Ok(())
   }
 
   async fn handle_message_create(&self, message: MessageCreate) -> Result<()> {
-    let content = if let Some(parser) = &self.instance_message_parser {
-      match parser.parse(message.content.as_str()) {
-        Some(content) => content,
+    let (sender_id, user_id, content) = if let Some(test_id) = &self.test_id {
+      match test_id.filter(message.content.as_str()) {
+        Some(test_message) => (
+          message.author.id,
+          test_message.test_user_id().into_discord_user_id(),
+          test_message.text,
+        ),
         None => return Ok(()),
       }
     } else {
-      message.content.as_str()
+      (
+        message.author.id,
+        message.author.id,
+        message.content.clone(),
+      )
     };
 
     fn extract_image_url(message: &MessageCreate) -> Option<String> {
@@ -165,10 +187,16 @@ impl Bot {
       Response::message(content)
     };
 
-    let user = self.db.user(message.author.id).await?;
+    let user = self.db.user(user_id).await?;
 
     self
-      .handle_response(message.author.bot, user, message.channel_id, response)
+      .handle_response(
+        message.author.bot,
+        sender_id,
+        user,
+        message.channel_id,
+        response,
+      )
       .await?;
 
     Ok(())
@@ -177,13 +205,14 @@ impl Bot {
   async fn handle_response(
     &self,
     bot: bool,
+    sender: UserId,
     user: User,
     channel_id: ChannelId,
     response: Response,
   ) -> Result<()> {
     info!("Received response: {:?}", response);
 
-    if user.discord_id == self.user.id {
+    if sender == self.user.id {
       info!("Ignoring message from self.");
       return Ok(());
     }
@@ -206,11 +235,15 @@ impl Bot {
 
     let update = user.update(&response);
 
+    let user_id = user.discord_id;
+
     let tx = self.db.prepare(user, update).await?;
 
     let prompt = tx.prompt();
 
-    let prompt_message = self.create_message(channel_id, &prompt.text()).await?;
+    let prompt_message = self
+      .create_message(user_id, channel_id, &prompt.text())
+      .await?;
 
     for emoji in prompt.reactions() {
       let reaction_type = emoji.into();
@@ -239,11 +272,16 @@ impl Bot {
     }
   }
 
-  async fn create_message(&self, channel_id: ChannelId, content: &str) -> Result<Message> {
+  async fn create_message(
+    &self,
+    user_id: UserId,
+    channel_id: ChannelId,
+    content: &str,
+  ) -> Result<Message> {
     let create_message = self.client().create_message(channel_id);
 
-    let content = if let Some(parser) = &self.instance_message_parser {
-      parser.prefix_message(content)
+    let content = if let Some(test_id) = &self.test_id {
+      test_id.prefix_message(user_id.0, content)
     } else {
       content.into()
     };
@@ -252,15 +290,15 @@ impl Bot {
   }
 
   #[cfg(test)]
-  pub(crate) async fn test(instance_message_parser: InstanceMessageParser) -> Result<Self> {
-    Self::new(Some(instance_message_parser)).await
+  pub(crate) async fn new_test_instance(test_id: TestId) -> Result<Self> {
+    Self::new(Some(test_id)).await
   }
 
   fn client(&self) -> &Client {
     self.cluster.config().http_client()
   }
 
-  async fn cluster_inner(test: bool) -> Result<Cluster> {
+  async fn initialize_cluster(test: bool) -> Result<Cluster> {
     let token = env::var("QUWUE_TOKEN").context(error::Token)?;
 
     let mut intents = Intents::DIRECT_MESSAGES | Intents::DIRECT_MESSAGE_REACTIONS;
@@ -283,16 +321,12 @@ impl Bot {
     Ok(cluster)
   }
 
-  async fn cluster(test: bool) -> Result<Cluster> {
-    if test {
-      Ok(test_cluster::get().await.clone())
+  async fn new(test_id: Option<TestId>) -> Result<Self> {
+    let cluster = if test_id.is_some() {
+      test_cluster::get().await.clone()
     } else {
-      Self::cluster_inner(false).await
-    }
-  }
-
-  async fn new(instance_message_parser: Option<InstanceMessageParser>) -> Result<Self> {
-    let cluster = Self::cluster(instance_message_parser.is_some()).await?;
+      Self::initialize_cluster(false).await?
+    };
 
     let client = cluster.config().http_client();
 
@@ -307,7 +341,7 @@ impl Bot {
     let inner = Inner {
       cluster,
       cache,
-      instance_message_parser,
+      test_id,
       user,
       db,
     };

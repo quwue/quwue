@@ -1,9 +1,11 @@
+use crate::common::*;
+
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) struct TestMessage {
-  pub(crate) test_run:  u64,
+  test_run:             u64,
   pub(crate) test_name: String,
   pub(crate) test_user: u64,
-  pub(crate) message:   String,
+  pub(crate) text:      String,
 }
 
 impl TestMessage {
@@ -62,14 +64,22 @@ impl TestMessage {
 
     let test_user = test_user?;
 
-    let message = chars.as_str().to_owned();
+    let text = chars.as_str().to_owned();
 
     Some(TestMessage {
       test_run,
       test_name,
       test_user,
-      message,
+      text,
     })
+  }
+
+  pub(crate) fn test_run_id(&self) -> TestRunId {
+    TestRunId::new(self.test_run)
+  }
+
+  pub(crate) fn test_user_id(&self) -> TestUserId {
+    TestUserId::new(self.test_name.clone(), self.test_user)
   }
 }
 
@@ -79,12 +89,12 @@ mod tests {
 
   #[test]
   fn parse() {
-    fn assert_some(input: &str, test_run: u64, test_name: &str, test_user: u64, message: &str) {
+    fn assert_some(input: &str, test_run: u64, test_name: &str, test_user: u64, text: &str) {
       let have =
         TestMessage::parse(input).expect(&format!("Failed to parse test message: `{}`", input));
 
       let want = TestMessage {
-        message: message.into(),
+        text: text.into(),
         test_name: test_name.into(),
         test_run,
         test_user,
