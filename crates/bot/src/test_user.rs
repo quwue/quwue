@@ -19,7 +19,6 @@ type MapResult = fn(Result<JoinError, RecvError>) -> Arc<Result<JoinError, RecvE
 pub(crate) struct TestUser {
   test_dispatcher: &'static TestDispatcher,
   id:              TestUserId,
-  received:        Vec<String>,
   error:           Shared<Map<Receiver<JoinError>, MapResult>>,
   bot:             Bot,
   channel:         mpsc::UnboundedReceiver<(MessageId, TestEvent)>,
@@ -55,7 +54,6 @@ impl TestUser {
     info!("Quwue instance intialized.");
 
     Self {
-      received: Vec::new(),
       error: rx.map(Arc::new as MapResult).shared(),
       bot,
       test_dispatcher,
