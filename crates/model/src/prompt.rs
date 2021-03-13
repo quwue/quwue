@@ -34,7 +34,7 @@ impl Prompt {
 
       Candidate => "TODO".into(),
       Bio => "Please enter a bio to show to other users.".into(),
-      ProfileImage => "Please enter your profile photo.".into(),
+      ProfileImage => "Please upload a profile photo.".into(),
     }
   }
 
