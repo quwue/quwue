@@ -110,7 +110,7 @@ impl User {
       }
     }
 
-    if self.prompt_message.is_none() {
+    if self.profile_image_url.is_none() {
       if let Action::SetProfileImage { .. } = action {
       } else {
         return Prompt::ProfileImage;

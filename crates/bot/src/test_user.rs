@@ -41,6 +41,13 @@ impl TestUser {
     self.test_dispatcher.send_reaction(id, emoji).await;
   }
 
+  pub(crate) async fn send_attachment(&self, filename: &str, data: Vec<u8>) {
+    self
+      .test_dispatcher
+      .send_attachment(&self.id, filename, data)
+      .await;
+  }
+
   pub(crate) async fn receive(&mut self) -> (MessageId, TestEvent) {
     select! {
       result = self.events.recv().fuse() => {

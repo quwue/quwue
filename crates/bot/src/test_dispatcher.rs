@@ -68,8 +68,9 @@ impl TestDispatcher {
           }
 
           let emoji = match &reaction.emoji {
-            ReactionType::Custom { .. } =>
-              panic!("Unexpected custom reaction: {:?}", reaction.emoji),
+            ReactionType::Custom { .. } => {
+              panic!("Unexpected custom reaction: {:?}", reaction.emoji)
+            },
             ReactionType::Unicode { name } =>
               if let Some(emoji) = Emoji::from_chars(&name) {
                 emoji
@@ -287,6 +288,24 @@ impl TestDispatcher {
     self
       .client()
       .create_reaction(self.channel(), id, emoji.into())
+      .await
+      .unwrap();
+  }
+
+  pub(crate) async fn send_attachment(
+    &self,
+    test_user_id: &TestUserId,
+    filename: &str,
+    data: Vec<u8>,
+  ) {
+    self.wait().await;
+    let content = self.test_run_id.prefix_message(test_user_id, "");
+    self
+      .client()
+      .create_message(self.channel())
+      .content(content)
+      .unwrap()
+      .attachment(filename, data)
       .await
       .unwrap();
   }

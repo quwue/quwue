@@ -178,12 +178,14 @@ impl Bot {
     };
 
     fn extract_image_url(message: &MessageCreate) -> Option<String> {
-      message.embeds.first()?.image.as_ref()?.url.to_owned()
+      Some(message.attachments.first()?.url.to_owned())
     }
 
     let response = if let Some(text) = extract_image_url(&message) {
+      info!("Processing image response: {}", text);
       Response::image(text.parse().context(error::EmbedImageUrlParse { text })?)
     } else {
+      info!("Processiong plain text message: {}", content);
       Response::message(content)
     };
 

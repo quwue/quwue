@@ -7,6 +7,16 @@ fn test<F: Future>(f: F) -> F::Output {
   RUNTIME.block_on(f)
 }
 
+fn create_test_png() -> Vec<u8> {
+  use image::{DynamicImage, ImageBuffer, ImageOutputFormat, RgbImage};
+  let mut image: RgbImage = ImageBuffer::new(100, 100);
+  image.fill(0xFF);
+  let dynamic = DynamicImage::ImageRgb8(image);
+  let mut dst = Vec::new();
+  dynamic.write_to(&mut dst, ImageOutputFormat::Png).unwrap();
+  dst
+}
+
 #[instrument]
 #[test]
 #[ignore]
@@ -68,7 +78,7 @@ fn welcome_confirm_react() {
 #[instrument]
 #[test]
 #[ignore]
-fn set_bio() {
+fn complete_profile() {
   test(async {
     let mut bot = test_bot!().await;
     let mut user = bot.new_user().await;
@@ -78,6 +88,8 @@ fn set_bio() {
     user.send_reaction(id, Emoji::ThumbsUp).await;
     user.expect_prompt(Prompt::Bio).await;
     user.send_message("my bio!").await;
+    user.expect_prompt(Prompt::ProfileImage).await;
+    user.send_attachment("image.png", create_test_png()).await;
     user.expect_prompt(Prompt::Quiescent).await;
   })
 }

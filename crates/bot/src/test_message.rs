@@ -53,11 +53,10 @@ impl TestMessage {
     let mut test_user = None;
 
     loop {
-      let c = chars.next()?;
-
-      if c == ' ' {
-        break;
-      }
+      let c = match chars.next() {
+        None | Some(' ') => break,
+        Some(c) => c,
+      };
 
       test_user = Some(test_user.unwrap_or(0) * 10 + u64::from(c.to_digit(10)?));
     }
@@ -105,6 +104,7 @@ mod tests {
 
     assert_some("test-0-bar.1 baz", 0, "bar", 1, "baz");
     assert_some("test-0-bar.1 ", 0, "bar", 1, "");
+    assert_some("test-0-bar.1", 0, "bar", 1, "");
     assert_some("test-2-a.3 b", 2, "a", 3, "b");
     assert_some("test-1-a.0 b", 1, "a", 0, "b");
     assert_some("test-1-bar.100 baz", 1, "bar", 100, "baz");
