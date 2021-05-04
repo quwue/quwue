@@ -239,12 +239,14 @@ impl Bot {
 
     let user_id = user.discord_id;
 
-    let tx = self.db.prepare(user, update).await?;
+    let mut tx = self.db.prepare(user, update).await?;
 
     let prompt = tx.prompt();
 
+    let prompt_text = Db::prompt_text(&mut tx.inner_transaction(), prompt).await?;
+
     let prompt_message = self
-      .create_message(user_id, channel_id, &prompt.text())
+      .create_message(user_id, channel_id, &prompt_text)
       .await?;
 
     for emoji in prompt.reactions() {
@@ -351,5 +353,9 @@ impl Bot {
     Ok(Bot {
       inner: Arc::new(inner),
     })
+  }
+
+  pub(crate) fn db(&self) -> &Db {
+    &self.db
   }
 }

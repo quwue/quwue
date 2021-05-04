@@ -15,10 +15,11 @@ pub(crate) struct TestUser {
   id:              TestUserId,
   error:           ErrorReceiver,
   events:          mpsc::UnboundedReceiver<(MessageId, TestEvent)>,
+  bot:             Bot,
 }
 
 impl TestUser {
-  pub(crate) async fn new(error: ErrorReceiver, id: TestUserId) -> Self {
+  pub(crate) async fn new(bot: Bot, error: ErrorReceiver, id: TestUserId) -> Self {
     let test_dispatcher = TestDispatcher::get_instance().await;
 
     info!("Initializing expect instance for `{}`…", id);
@@ -30,6 +31,7 @@ impl TestUser {
       test_dispatcher,
       id,
       events,
+      bot,
     }
   }
 
@@ -89,10 +91,24 @@ impl TestUser {
   }
 
   pub(crate) async fn expect_prompt(&mut self, prompt: Prompt) -> MessageId {
-    let id = self.expect_message(&prompt.text()).await;
+    let id = self
+      .expect_message(
+        &self
+          .bot
+          .db()
+          .prompt_text_outside_update_transaction(prompt)
+          .await,
+      )
+      .await;
+
     for emoji in prompt.reactions() {
       assert_eq!(self.expect_reaction(emoji).await, id);
     }
+
     id
+  }
+
+  pub(crate) fn id(&self) -> UserId {
+    self.id.into_discord_user_id()
   }
 }

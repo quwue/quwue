@@ -98,6 +98,10 @@ impl Db {
       WHERE
         welcomed == TRUE
         AND
+        bio IS NOT NULL
+        AND
+        profile_image_url IS NOT NULL
+        AND
         discord_id != ? LIMIT 1",
       discord_id
     )
@@ -124,8 +128,8 @@ impl Db {
     let mut prompt = update.prompt;
 
     if prompt.quiescent() {
-      if let Some(_candidate) = Self::candidate(&mut tx, user.discord_id).await? {
-        prompt = Prompt::Candidate;
+      if let Some(id) = Self::candidate(&mut tx, user.discord_id).await? {
+        prompt = Prompt::Candidate { id };
       }
     };
 
@@ -220,6 +224,52 @@ impl Db {
         .await?
         .count as u64,
     )
+  }
+
+  pub async fn prompt_text(tx: &mut Transaction<'_>, prompt: Prompt) -> Result<String> {
+    use Prompt::*;
+
+    let text = match prompt {
+      Welcome => format!(
+        concat!(
+          "Hi!\n",
+          "Quwue is a bot that matches you with other Discord users.\n",
+          "Your Discord tag will only be revealed to matches.\n",
+          "To start, you'll need to set up your profile.\n",
+          "Hit the {} emoji or type `ok` to continue.",
+        ),
+        Emoji::ThumbsUp.markup()
+      ),
+      Quiescent => "You've seen all available matches. We'll message you when we have new matches \
+                    to show you!"
+        .into(),
+      Candidate { id } => {
+        let id_storage = id.store();
+
+        let row = sqlx::query!("SELECT bio from users where discord_id = ?", id_storage)
+          .fetch_optional(tx)
+          .await?;
+
+        if let Some(user) = row {
+          if let Some(bio) = user.bio {
+            bio
+          } else {
+            return Err(Error::CandidateMissingBio { id });
+          }
+        } else {
+          return Err(Error::CandidateUnknown { id });
+        }
+      }
+      Bio => "Please enter a bio to show to other users.".into(),
+      ProfileImage => "Please upload a profile photo.".into(),
+    };
+
+    Ok(text)
+  }
+
+  pub async fn prompt_text_outside_update_transaction(&self, prompt: Prompt) -> String {
+    let mut tx = self.pool.begin().await.unwrap();
+    Db::prompt_text(&mut tx, prompt).await.unwrap()
   }
 }
 

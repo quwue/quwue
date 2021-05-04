@@ -10,7 +10,7 @@ pub enum Emoji {
 }
 
 impl Emoji {
-  pub(crate) fn markup(self) -> String {
+  pub fn markup(self) -> String {
     format!(":{}:", self.name())
   }
 

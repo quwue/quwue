@@ -21,4 +21,8 @@ impl<'a> UpdateTx<'a> {
 
     Ok(())
   }
+
+  pub fn inner_transaction(&mut self) -> &mut Transaction<'a> {
+    &mut self.tx
+  }
 }

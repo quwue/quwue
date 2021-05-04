@@ -24,16 +24,14 @@ impl Value for u64 {
 
 impl Value for Prompt {
   type Err = Error;
-  type Storage = i64;
+  type Storage = String;
 
   fn store(self) -> Self::Storage {
-    let n: u64 = self.into();
-    i64::from_le_bytes(n.to_le_bytes())
+    serde_json::to_string(&self).expect("Prompt serialization failed.")
   }
 
   fn load(storage: Self::Storage) -> Result<Self, Self::Err> {
-    let value = u64::from_le_bytes(storage.to_le_bytes());
-    Self::try_from(value).context(error::PromptLoad)
+    serde_json::from_str(&storage).context(error::PromptLoad)
   }
 }
 

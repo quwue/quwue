@@ -134,3 +134,33 @@ fn multi_user_react_test() {
     b.expect_prompt(Prompt::Bio).await;
   })
 }
+
+#[instrument]
+#[test]
+#[ignore]
+fn multi_user_candidate() {
+  test(async {
+    let mut bot = test_bot!().await;
+    let mut a = bot.new_user().await;
+    let mut b = bot.new_user().await;
+
+    a.send_message("hi").await;
+    let id = a.expect_prompt(Prompt::Welcome).await;
+    a.send_reaction(id, Emoji::ThumbsUp).await;
+    a.expect_prompt(Prompt::Bio).await;
+    a.send_message("my bio!").await;
+    a.expect_prompt(Prompt::ProfileImage).await;
+    a.send_attachment("image.png", create_test_png()).await;
+    a.expect_prompt(Prompt::Quiescent).await;
+
+    b.send_message("hi").await;
+    let id = b.expect_prompt(Prompt::Welcome).await;
+    b.send_reaction(id, Emoji::ThumbsUp).await;
+    b.expect_prompt(Prompt::Bio).await;
+    b.send_message("my bio!").await;
+    b.expect_prompt(Prompt::ProfileImage).await;
+    b.send_attachment("image.png", create_test_png()).await;
+
+    b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
+  })
+}

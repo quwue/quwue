@@ -21,7 +21,6 @@ pub(crate) struct TestBot {
   error:            ErrorReceiver,
   test_name:        String,
   next_user_number: u64,
-  #[allow(unused)]
   bot:              Bot,
 }
 
@@ -62,6 +61,6 @@ impl TestBot {
     let next_user_number = self.next_user_number;
     self.next_user_number += 1;
     let test_user_id = TestUserId::new(self.test_name.clone(), next_user_number);
-    TestUser::new(self.error.clone(), test_user_id).await
+    TestUser::new(self.bot.clone(), self.error.clone(), test_user_id).await
   }
 }

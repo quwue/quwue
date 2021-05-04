@@ -1,4 +1,5 @@
 // dependencies
+pub(crate) use serde::{Deserialize, Serialize};
 pub(crate) use url::Url;
 pub(crate) use ::{
   twilight_http::request::channel::reaction::RequestReactionType,

@@ -53,7 +53,7 @@ impl User {
         if content.to_lowercase() == "ok" {
           return Some(Action::Welcome);
         },
-      Candidate => match content.to_lowercase().as_str() {
+      Candidate { .. } => match content.to_lowercase().as_str() {
         "yes" => todo!(),
         "no" => todo!(),
         _ => {},
@@ -77,7 +77,7 @@ impl User {
         if emoji == ThumbsUp {
           return Some(Action::Welcome);
         },
-      Candidate => match emoji {
+      Candidate { .. } => match emoji {
         ThumbsUp => todo!(),
         ThumbsDown => todo!(),
       },
@@ -91,11 +91,9 @@ impl User {
     use Prompt::*;
 
     match prompt {
-      ProfileImage => return Some(Action::SetProfileImage { url }),
-      Welcome | Quiescent | Candidate | Bio => {},
+      ProfileImage => Some(Action::SetProfileImage { url }),
+      Welcome | Quiescent | Candidate { .. } | Bio => None,
     }
-
-    None
   }
 
   fn next_prompt(&self, action: Action) -> Prompt {

@@ -8,7 +8,7 @@ pub enum Error {
     source: sqlx::Error,
   },
   PromptLoad {
-    source: TryFromPrimitiveError<Prompt>,
+    source: serde_json::Error,
   },
   PromptMessageLoad {
     prompt:     Option<Prompt>,
@@ -20,6 +20,12 @@ pub enum Error {
   UrlLoad {
     source: url::ParseError,
     text:   String,
+  },
+  CandidateMissingBio {
+    id: UserId,
+  },
+  CandidateUnknown {
+    id: UserId,
   },
 }
 
