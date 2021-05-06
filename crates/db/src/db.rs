@@ -249,7 +249,7 @@ impl Db {
           "Quwue is a bot that matches you with other Discord users.\n",
           "Your Discord tag will only be revealed to matches.\n",
           "To start, you'll need to set up your profile.\n",
-          "Hit the {} emoji or type `ok` to continue.",
+          "React with {} or type `ok` to continue.",
         ),
         Emoji::ThumbsUp.markup()
       ),
@@ -265,7 +265,7 @@ impl Db {
 
         if let Some(user) = row {
           if let Some(bio) = user.bio {
-            bio
+            format!("New potential match:\n\n*{}*", bio)
           } else {
             return Err(Error::CandidateMissingBio { id });
           }

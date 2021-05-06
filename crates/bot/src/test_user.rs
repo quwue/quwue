@@ -1,12 +1,5 @@
 use crate::common::*;
 
-#[macro_export]
-macro_rules! test_user {
-  () => {{
-    crate::test_user::TestUser::new(TestUserId::next(crate::test_name!()))
-  }};
-}
-
 use crate::test_bot::ErrorReceiver;
 
 #[derive(Debug)]
