@@ -40,7 +40,7 @@ pub(crate) use ::{
 pub(crate) use tracing::{error, info, span, trace, warn};
 
 // modules
-pub(crate) use crate::{async_static, error, logging, runtime};
+pub(crate) use crate::{async_static, error, logging, rate_limit, runtime};
 
 // structs and enums
 pub(crate) use crate::{

@@ -2,14 +2,13 @@ use crate::common::*;
 
 #[derive(Debug)]
 pub(crate) struct TestDispatcher {
-  channel:      TextChannel,
-  cluster:      Cluster,
-  guild:        Guild,
-  member:       Member,
-  test_run_id:  TestRunId,
-  user:         discord::User,
-  channels:     Arc<RwLock<BTreeMap<TestUserId, mpsc::UnboundedSender<(MessageId, TestEvent)>>>>,
-  rate_limiter: Mutex<Instant>,
+  channel:     TextChannel,
+  cluster:     Cluster,
+  guild:       Guild,
+  member:      Member,
+  test_run_id: TestRunId,
+  user:        discord::User,
+  channels:    Arc<RwLock<BTreeMap<TestUserId, mpsc::UnboundedSender<(MessageId, TestEvent)>>>>,
 }
 
 #[cfg(test)]
@@ -186,7 +185,6 @@ impl TestDispatcher {
     info!("TestDispatcher instance initialized.");
 
     Self {
-      rate_limiter: Mutex::new(Instant::now()),
       test_run_id: TestRunId::new(test_run),
       channel,
       cluster,
@@ -261,18 +259,8 @@ impl TestDispatcher {
     rx
   }
 
-  pub(crate) async fn wait(&self) {
-    let mut rate_limiter = self.rate_limiter.lock().await;
-    let now = Instant::now();
-
-    if let Some(duration) = rate_limiter.checked_duration_since(now) {
-      tokio::time::sleep(duration).await;
-    }
-    *rate_limiter = Instant::now() + Duration::from_secs(2);
-  }
-
   pub(crate) async fn send_message(&self, test_user_id: &TestUserId, msg: &str) {
-    self.wait().await;
+    rate_limit::wait().await;
     let content = self.test_run_id.prefix_message(test_user_id, msg);
     self
       .client()
@@ -284,7 +272,7 @@ impl TestDispatcher {
   }
 
   pub(crate) async fn send_reaction(&self, id: MessageId, emoji: Emoji) {
-    self.wait().await;
+    rate_limit::wait().await;
     self
       .client()
       .create_reaction(self.channel(), id, emoji.into())
@@ -298,7 +286,7 @@ impl TestDispatcher {
     filename: &str,
     data: Vec<u8>,
   ) {
-    self.wait().await;
+    rate_limit::wait().await;
     let content = self.test_run_id.prefix_message(test_user_id, "");
     self
       .client()

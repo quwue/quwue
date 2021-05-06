@@ -24,6 +24,7 @@ mod bot;
 mod common;
 mod error;
 mod logging;
+mod rate_limit;
 mod runtime;
 mod test_name;
 mod test_user_id;

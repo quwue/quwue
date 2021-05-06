@@ -14,6 +14,5 @@ pub(crate) fn from_closure_type<T>(f: T) -> String {
   let parts = name.split("::").collect::<Vec<&str>>();
   assert_eq!(parts[parts.len() - 1], "f");
   assert_eq!(parts[parts.len() - 2], "{{closure}}");
-  dbg!(name);
   parts[parts.len() - 3].to_owned()
 }

@@ -96,6 +96,8 @@ impl Bot {
     };
 
     if let Err(err) = result {
+      eprintln!("Error handling event: {}", err);
+
       self
         .client()
         .create_message(channel_id)
@@ -245,6 +247,7 @@ impl Bot {
 
     let prompt_text = Db::prompt_text(&mut tx.inner_transaction(), prompt).await?;
 
+    rate_limit::wait().await;
     let prompt_message = self
       .create_message(user_id, channel_id, &prompt_text)
       .await?;
@@ -252,6 +255,7 @@ impl Bot {
     for emoji in prompt.reactions() {
       let reaction_type = emoji.into();
 
+      rate_limit::wait().await;
       self
         .client()
         .create_reaction(channel_id, prompt_message.id, reaction_type)

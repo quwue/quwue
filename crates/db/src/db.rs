@@ -272,7 +272,7 @@ impl Db {
         } else {
           return Err(Error::CandidateUnknown { id });
         }
-      }
+      },
       Bio => "Please enter a bio to show to other users.".into(),
       ProfileImage => "Please upload a profile photo.".into(),
     };
@@ -290,7 +290,7 @@ impl Db {
     let candidate_id = candidate_id.store();
 
     sqlx::query!(
-      "INSERT INTO responses
+      "INSERT OR REPLACE INTO responses
         (discord_id, candidate_id, response)
       VALUES
         (?, ?, ?)",
@@ -345,6 +345,22 @@ impl Db {
     let tx = self.prepare(id, update).await.unwrap();
 
     tx.commit(MessageId(200)).await.unwrap();
+  }
+
+  #[cfg(test)]
+  async fn response(&self, user: UserId, candidate: UserId) -> bool {
+    let user = user.store();
+    let candidate = candidate.store();
+    let row = sqlx::query!(
+      "SELECT response FROM responses WHERE discord_id = ? AND candidate_id = ?",
+      user,
+      candidate
+    )
+    .fetch_one(&self.pool)
+    .await
+    .unwrap();
+
+    row.response
   }
 }
 
@@ -677,5 +693,53 @@ mod tests {
     let tx = db.prepare(b_user_id, update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Candidate { id: a_user_id });
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn allow_multiple_responses() {
+    let db = Db::new().await.unwrap();
+
+    let a_user_id = UserId(100);
+    let b_user_id = UserId(101);
+
+    db.create_profile(a_user_id).await;
+    db.create_profile(b_user_id).await;
+
+    let update = Update {
+      action: None,
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Candidate { id: b_user_id });
+
+    tx.commit(MessageId(200)).await.unwrap();
+
+    let update = Update {
+      action: Some(Action::AcceptCandidate { id: b_user_id }),
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Quiescent);
+
+    tx.commit(MessageId(201)).await.unwrap();
+
+    assert!(db.response(a_user_id, b_user_id).await);
+
+    let update = Update {
+      action: Some(Action::RejectCandidate { id: b_user_id }),
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Quiescent);
+
+    tx.commit(MessageId(201)).await.unwrap();
+
+    assert!(!db.response(a_user_id, b_user_id).await);
   }
 }
