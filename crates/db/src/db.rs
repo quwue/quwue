@@ -102,7 +102,20 @@ impl Db {
         AND
         profile_image_url IS NOT NULL
         AND
-        discord_id != ? LIMIT 1",
+        discord_id != ?
+        AND
+        NOT EXISTS (
+          SELECT * FROM responses
+          WHERE discord_id = ? AND candidate_id = users.discord_id
+        )
+        AND
+        NOT EXISTS (
+          SELECT * FROM responses
+          WHERE discord_id = users.discord_id AND candidate_id = ? AND NOT response
+        )
+      LIMIT 1",
+      discord_id,
+      discord_id,
       discord_id
     )
     .fetch_optional(tx)
@@ -111,10 +124,8 @@ impl Db {
     Ok(row.map(|row| UserId::load(row.discord_id).unwrap_infallible()))
   }
 
-  pub async fn prepare<'a>(&'a self, user: User, update: Update) -> Result<UpdateTx<'a>> {
+  pub async fn prepare<'a>(&'a self, user_id: UserId, update: Update) -> Result<UpdateTx<'a>> {
     let mut tx = self.pool.begin().await?;
-
-    let user_id = user.discord_id;
 
     if let Some(action) = update.action {
       use Action::*;
@@ -122,13 +133,15 @@ impl Db {
         Welcome => Self::welcome(&mut tx, user_id).await?,
         SetBio { text } => Self::set_bio(&mut tx, user_id, &text).await?,
         SetProfileImage { url } => Self::set_profile_image(&mut tx, user_id, &url).await?,
+        AcceptCandidate { id } => Self::respond_to_candidate(&mut tx, user_id, id, true).await?,
+        RejectCandidate { id } => Self::respond_to_candidate(&mut tx, user_id, id, false).await?,
       }
     }
 
     let mut prompt = update.prompt;
 
     if prompt.quiescent() {
-      if let Some(id) = Self::candidate(&mut tx, user.discord_id).await? {
+      if let Some(id) = Self::candidate(&mut tx, user_id).await? {
         prompt = Prompt::Candidate { id };
       }
     };
@@ -267,9 +280,71 @@ impl Db {
     Ok(text)
   }
 
+  async fn respond_to_candidate(
+    tx: &mut Transaction<'_>,
+    user_id: UserId,
+    candidate_id: UserId,
+    response: bool,
+  ) -> Result<()> {
+    let user_id = user_id.store();
+    let candidate_id = candidate_id.store();
+
+    sqlx::query!(
+      "INSERT INTO responses
+        (discord_id, candidate_id, response)
+      VALUES
+        (?, ?, ?)",
+      user_id,
+      candidate_id,
+      response
+    )
+    .execute(tx)
+    .await?;
+
+    Ok(())
+  }
+
   pub async fn prompt_text_outside_update_transaction(&self, prompt: Prompt) -> String {
     let mut tx = self.pool.begin().await.unwrap();
     Db::prompt_text(&mut tx, prompt).await.unwrap()
+  }
+
+  #[cfg(test)]
+  async fn create_profile(&self, id: UserId) {
+    self.user(id).await.unwrap();
+
+    let update = Update {
+      action: Some(Action::Welcome),
+      prompt: Prompt::Bio,
+    };
+
+    let tx = self.prepare(id, update).await.unwrap();
+
+    tx.commit(MessageId(200)).await.unwrap();
+
+    let update = Update {
+      action: Some(Action::SetBio {
+        text: format!("User {}'s bio!", id),
+      }),
+      prompt: Prompt::ProfileImage,
+    };
+
+    let tx = self.prepare(id, update).await.unwrap();
+
+    tx.commit(MessageId(200)).await.unwrap();
+
+    let update = Update {
+      action: Some(Action::SetProfileImage {
+        url: format!("https://foo.example/user-{}.png", id)
+          .parse()
+          .unwrap(),
+      }),
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = self.prepare(id, update).await.unwrap();
+
+    tx.commit(MessageId(200)).await.unwrap();
   }
 }
 
@@ -330,7 +405,7 @@ mod tests {
       prompt: Prompt::Welcome,
     };
 
-    let tx = db.prepare(have, update).await.unwrap();
+    let tx = db.prepare(have.discord_id, update).await.unwrap();
 
     tx.commit(message_id).await.unwrap();
 
@@ -376,7 +451,7 @@ mod tests {
       prompt: Prompt::Bio,
     };
 
-    let tx = db.prepare(have, update).await.unwrap();
+    let tx = db.prepare(have.discord_id, update).await.unwrap();
 
     tx.commit(message_id).await.unwrap();
 
@@ -422,7 +497,7 @@ mod tests {
       prompt: Prompt::ProfileImage,
     };
 
-    let tx = db.prepare(have, update).await.unwrap();
+    let tx = db.prepare(have.discord_id, update).await.unwrap();
 
     tx.commit(message_id).await.unwrap();
 
@@ -436,5 +511,171 @@ mod tests {
       discord_id,
     };
     assert_eq!(have, want);
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn expect_candidate() {
+    let db = Db::new().await.unwrap();
+
+    let a_user_id = UserId(100);
+    let b_user_id = UserId(101);
+
+    db.create_profile(a_user_id).await;
+    db.create_profile(b_user_id).await;
+
+    let update = Update {
+      action: None,
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Candidate { id: b_user_id })
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn filter_out_accepted_candidates() {
+    let db = Db::new().await.unwrap();
+
+    let a_user_id = UserId(100);
+    let b_user_id = UserId(101);
+
+    db.create_profile(a_user_id).await;
+    db.create_profile(b_user_id).await;
+
+    let update = Update {
+      action: None,
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Candidate { id: b_user_id });
+
+    tx.commit(MessageId(200)).await.unwrap();
+
+    let update = Update {
+      action: Some(Action::AcceptCandidate { id: b_user_id }),
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Quiescent);
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn filter_out_rejected_candidates() {
+    let db = Db::new().await.unwrap();
+
+    let a_user_id = UserId(100);
+    let b_user_id = UserId(101);
+
+    db.create_profile(a_user_id).await;
+    db.create_profile(b_user_id).await;
+
+    let update = Update {
+      action: None,
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Candidate { id: b_user_id });
+
+    tx.commit(MessageId(200)).await.unwrap();
+
+    let update = Update {
+      action: Some(Action::RejectCandidate { id: b_user_id }),
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Quiescent);
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn filter_out_candidates_that_have_rejected_user() {
+    let db = Db::new().await.unwrap();
+
+    let a_user_id = UserId(100);
+    let b_user_id = UserId(101);
+
+    db.create_profile(a_user_id).await;
+    db.create_profile(b_user_id).await;
+
+    let update = Update {
+      action: None,
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Candidate { id: b_user_id });
+
+    tx.commit(MessageId(200)).await.unwrap();
+
+    let update = Update {
+      action: Some(Action::RejectCandidate { id: b_user_id }),
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Quiescent);
+
+    tx.commit(MessageId(201)).await.unwrap();
+
+    let update = Update {
+      action: None,
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(b_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Quiescent);
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn dont_filter_candidates_that_have_accepted_user() {
+    let db = Db::new().await.unwrap();
+
+    let a_user_id = UserId(100);
+    let b_user_id = UserId(101);
+
+    db.create_profile(a_user_id).await;
+    db.create_profile(b_user_id).await;
+
+    let update = Update {
+      action: None,
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Candidate { id: b_user_id });
+
+    tx.commit(MessageId(200)).await.unwrap();
+
+    let update = Update {
+      action: Some(Action::AcceptCandidate { id: b_user_id }),
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(a_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Quiescent);
+
+    tx.commit(MessageId(201)).await.unwrap();
+
+    let update = Update {
+      action: None,
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = db.prepare(b_user_id, update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Candidate { id: a_user_id });
   }
 }

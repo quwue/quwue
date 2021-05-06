@@ -239,7 +239,7 @@ impl Bot {
 
     let user_id = user.discord_id;
 
-    let mut tx = self.db.prepare(user, update).await?;
+    let mut tx = self.db.prepare(user_id, update).await?;
 
     let prompt = tx.prompt();
 

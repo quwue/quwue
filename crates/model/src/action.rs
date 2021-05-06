@@ -5,4 +5,6 @@ pub enum Action {
   Welcome,
   SetBio { text: String },
   SetProfileImage { url: Url },
+  AcceptCandidate { id: UserId },
+  RejectCandidate { id: UserId },
 }

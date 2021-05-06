@@ -75,16 +75,16 @@ impl User {
     match prompt {
       Welcome =>
         if emoji == ThumbsUp {
-          return Some(Action::Welcome);
+          Some(Action::Welcome)
+        } else {
+          None
         },
-      Candidate { .. } => match emoji {
-        ThumbsUp => todo!(),
-        ThumbsDown => todo!(),
+      Candidate { id } => match emoji {
+        ThumbsUp => Some(Action::AcceptCandidate { id }),
+        ThumbsDown => Some(Action::RejectCandidate { id }),
       },
-      Quiescent | Bio | ProfileImage => {},
+      Quiescent | Bio | ProfileImage => None,
     }
-
-    None
   }
 
   fn action_for_image(prompt: Prompt, url: Url) -> Option<Action> {
