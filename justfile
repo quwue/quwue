@@ -25,6 +25,9 @@ lint:
 	./bin/lint
 
 fmt:
+	cargo +nightly fmt --all
+
+fmt-check:
 	cargo +nightly fmt --all -- --check
 
 check:
@@ -33,14 +36,14 @@ check:
 deps:
 	cargo install sqlx-cli
 
-push: try
+push remote: try
 	git diff --no-ext-diff --quiet --exit-code
 	git branch | grep '* master'
-	git push bitbucket
+	git push {{remote}}
 
-try: fmt check clippy test lint integration
+try: fmt-check check clippy test lint integration
 
-pr: push
+pr remote: (push remote)
 	hub pull-request -o
 
 clippy:
