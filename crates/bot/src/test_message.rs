@@ -89,8 +89,8 @@ mod tests {
   #[test]
   fn parse() {
     fn assert_some(input: &str, test_run: u64, test_name: &str, test_user: u64, text: &str) {
-      let have =
-        TestMessage::parse(input).expect(&format!("Failed to parse test message: `{}`", input));
+      let have = TestMessage::parse(input)
+        .unwrap_or_else(|| panic!("Failed to parse test message: `{}`", input));
 
       let want = TestMessage {
         text: text.into(),

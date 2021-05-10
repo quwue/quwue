@@ -7,6 +7,7 @@ pub(crate) struct TestId {
 }
 
 impl TestId {
+  #[cfg(test)]
   pub(crate) fn new(test_run: TestRunId, test_name: String) -> Self {
     Self {
       test_run,

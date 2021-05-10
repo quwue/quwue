@@ -1,5 +1,7 @@
 use crate::common::*;
 
+type Channels = BTreeMap<TestUserId, mpsc::UnboundedSender<(MessageId, TestEvent)>>;
+
 #[derive(Debug)]
 pub(crate) struct TestDispatcher {
   channel:     TextChannel,
@@ -8,7 +10,7 @@ pub(crate) struct TestDispatcher {
   member:      Member,
   test_run_id: TestRunId,
   user:        discord::User,
-  channels:    Arc<RwLock<BTreeMap<TestUserId, mpsc::UnboundedSender<(MessageId, TestEvent)>>>>,
+  channels:    Arc<RwLock<Channels>>,
 }
 
 #[cfg(test)]
@@ -107,6 +109,8 @@ impl TestDispatcher {
   }
 
   async fn init() -> TestDispatcher {
+    const CHANNEL_NAME: &str = "testing";
+
     info!("Initializing run instance…");
 
     let cluster = TestDispatcher::initialize_cluster().await;
@@ -131,8 +135,6 @@ impl TestDispatcher {
     );
 
     let channels = client.guild_channels(guild.id).await.unwrap();
-
-    const CHANNEL_NAME: &str = "testing";
 
     let mut testing_channels = channels
       .into_iter()

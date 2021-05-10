@@ -19,11 +19,7 @@ impl Response {
   }
 
   pub fn unicode_reaction(chars: String) -> Response {
-    if let Some(emoji) = Emoji::from_chars(&chars) {
-      Self::Reaction(emoji)
-    } else {
-      Self::UnrecognizedReaction(chars)
-    }
+    Emoji::from_chars(&chars).map_or_else(|| Self::UnrecognizedReaction(chars), Self::Reaction)
   }
 
   pub fn custom_reaction(id: EmojiId) -> Response {

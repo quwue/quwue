@@ -1,9 +1,9 @@
 use crate::common::*;
 
 pub struct UpdateTx<'a> {
+  pub(crate) prompt:  Prompt,
   pub(crate) tx:      Transaction<'a>,
   pub(crate) user_id: UserId,
-  pub(crate) prompt:  Prompt,
 }
 
 impl<'a> UpdateTx<'a> {

@@ -17,11 +17,11 @@ pub(crate) struct Bot {
 
 #[derive(Debug)]
 pub(crate) struct Inner {
+  cache:   InMemoryCache,
   cluster: Cluster,
+  db:      Db,
   test_id: Option<TestId>,
   user:    discord::User,
-  cache:   InMemoryCache,
-  db:      Db,
 }
 
 impl Deref for Bot {
@@ -134,7 +134,7 @@ impl Bot {
       let test_message =
         TestMessage::parse(&message.content).expect("failed to parse reaction message");
 
-      test_message.test_user_id().into_discord_user_id()
+      test_message.test_user_id().to_discord_user_id()
     } else {
       reaction.user_id
     };
@@ -162,11 +162,15 @@ impl Bot {
   }
 
   async fn handle_message_create(&self, message: MessageCreate) -> Result<()> {
+    fn extract_image_url(message: &MessageCreate) -> Option<String> {
+      Some(message.attachments.first()?.url.clone())
+    }
+
     let (sender_id, user_id, content) = if let Some(test_id) = &self.test_id {
       match test_id.filter(message.content.as_str()) {
         Some(test_message) => (
           message.author.id,
-          test_message.test_user_id().into_discord_user_id(),
+          test_message.test_user_id().to_discord_user_id(),
           test_message.text,
         ),
         None => return Ok(()),
@@ -178,10 +182,6 @@ impl Bot {
         message.content.clone(),
       )
     };
-
-    fn extract_image_url(message: &MessageCreate) -> Option<String> {
-      Some(message.attachments.first()?.url.to_owned())
-    }
 
     let response = if let Some(text) = extract_image_url(&message) {
       info!("Processing image response: {}", text);
@@ -323,11 +323,10 @@ impl Bot {
   ) -> Result<Message> {
     let create_message = self.client().create_message(channel_id);
 
-    let content = if let Some(test_id) = &self.test_id {
-      test_id.prefix_message(user_id.0, content)
-    } else {
-      content.into()
-    };
+    let content = self.test_id.as_ref().map_or_else(
+      || content.into(),
+      |test_id| test_id.prefix_message(user_id.0, content),
+    );
 
     Ok(create_message.content(content)?.await?)
   }
@@ -382,11 +381,11 @@ impl Bot {
     let db = Db::new().await?;
 
     let inner = Inner {
-      cluster,
       cache,
+      cluster,
+      db,
       test_id,
       user,
-      db,
     };
 
     Ok(Bot {
@@ -394,6 +393,7 @@ impl Bot {
     })
   }
 
+  #[cfg(test)]
   pub(crate) fn db(&self) -> &Db {
     &self.db
   }

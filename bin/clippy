@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+cargo clippy --all --all-targets --all-features -- \
+  --deny  clippy::all                              \
+  --deny  clippy::pedantic                         \
+  --allow clippy::enum-glob-use                    \
+  --allow clippy::missing-errors-doc               \
+  --allow clippy::missing-panics-doc               \
+  --allow clippy::must-use-candidate               \
+  --allow clippy::needless-lifetimes               \
+  --allow clippy::non-ascii-literal                \
+  --allow clippy::wildcard-imports

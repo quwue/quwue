@@ -6,13 +6,14 @@ pub(crate) use std::{
   ops::Deref,
   panic, process,
   sync::Arc,
+  time::{Duration, Instant},
 };
 
 // dependencies
 pub(crate) use ::{
   futures_util::StreamExt,
   snafu::{ResultExt, Snafu},
-  tokio::runtime::Runtime,
+  tokio::{runtime::Runtime, sync::Mutex},
   tracing_log::LogTracer,
   tracing_subscriber::{layer::SubscriberExt, EnvFilter},
   twilight_cache_inmemory::InMemoryCache,
@@ -31,7 +32,7 @@ pub(crate) use ::{
 // local dependencies
 pub(crate) use ::{
   db::Db,
-  model::{Action, Prompt, Response, User},
+  model::{Action, Response, User},
 };
 
 // logging macros
@@ -43,7 +44,8 @@ pub(crate) use crate::{async_static, error, logging, rate_limit, runtime};
 
 // structs and enums
 pub(crate) use crate::{
-  bot::Bot, error::Error, test_id::TestId, test_message::TestMessage, test_user_id::TestUserId,
+  bot::Bot, error::Error, test_id::TestId, test_message::TestMessage, test_run_id::TestRunId,
+  test_user_id::TestUserId,
 };
 
 // type aliases
@@ -53,10 +55,7 @@ pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
 #[cfg(test)]
 mod test {
   // stdlib
-  pub(crate) use std::{
-    collections::BTreeMap,
-    time::{Duration, Instant},
-  };
+  pub(crate) use std::collections::BTreeMap;
 
   // dependencies
   pub(crate) use ::{
@@ -68,7 +67,7 @@ mod test {
     once_cell::sync::Lazy,
     serde::Deserialize,
     tokio::{
-      sync::{mpsc, Mutex, RwLock},
+      sync::{mpsc, RwLock},
       time,
     },
     tracing::instrument,
@@ -80,7 +79,7 @@ mod test {
   };
 
   // local dependencies
-  pub(crate) use model::Emoji;
+  pub(crate) use model::{Emoji, Prompt};
 
   // macros
   pub(crate) use crate::test_bot;
@@ -90,8 +89,7 @@ mod test {
 
   // structs and enums
   pub(crate) use crate::{
-    test_dispatcher::TestDispatcher, test_event::TestEvent, test_run_id::TestRunId,
-    test_user::TestUser,
+    test_dispatcher::TestDispatcher, test_event::TestEvent, test_user::TestUser,
   };
 }
 

@@ -36,10 +36,10 @@ impl Emoji {
   }
 }
 
-impl Into<RequestReactionType> for Emoji {
-  fn into(self) -> RequestReactionType {
-    RequestReactionType::Unicode {
-      name: self.char().into(),
+impl From<Emoji> for RequestReactionType {
+  fn from(emoji: Emoji) -> Self {
+    Self::Unicode {
+      name: emoji.char().into(),
     }
   }
 }

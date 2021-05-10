@@ -11,7 +11,7 @@ impl TestUserId {
     Self { test_name, user }
   }
 
-  pub(crate) fn into_discord_user_id(&self) -> UserId {
+  pub(crate) fn to_discord_user_id(&self) -> UserId {
     UserId(self.user)
   }
 }

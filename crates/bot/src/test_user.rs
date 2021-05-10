@@ -4,11 +4,11 @@ use crate::test_bot::ErrorReceiver;
 
 #[derive(Debug)]
 pub(crate) struct TestUser {
-  test_dispatcher: &'static TestDispatcher,
-  id:              TestUserId,
+  bot:             Bot,
   error:           ErrorReceiver,
   events:          mpsc::UnboundedReceiver<(MessageId, TestEvent)>,
-  bot:             Bot,
+  id:              TestUserId,
+  test_dispatcher: &'static TestDispatcher,
 }
 
 impl TestUser {
@@ -20,11 +20,11 @@ impl TestUser {
     let events = test_dispatcher.register_test_user(&id).await;
 
     Self {
-      error,
-      test_dispatcher,
-      id,
-      events,
       bot,
+      error,
+      events,
+      id,
+      test_dispatcher,
     }
   }
 
@@ -44,6 +44,7 @@ impl TestUser {
   }
 
   pub(crate) async fn receive(&mut self) -> (MessageId, TestEvent) {
+    #![allow(clippy::mut_mut)]
     select! {
       result = self.events.recv().fuse() => {
         result.expect("channel sender dropped")
@@ -105,6 +106,6 @@ impl TestUser {
   }
 
   pub(crate) fn id(&self) -> UserId {
-    self.id.into_discord_user_id()
+    self.id.to_discord_user_id()
   }
 }

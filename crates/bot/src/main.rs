@@ -1,5 +1,3 @@
-#![cfg_attr(test, allow(clippy::panic))]
-
 #[cfg(test)]
 mod expect_var;
 #[cfg(test)]
@@ -11,11 +9,7 @@ mod test_dispatcher;
 #[cfg(test)]
 mod test_event;
 #[cfg(test)]
-mod test_id;
-#[cfg(test)]
-mod test_message;
-#[cfg(test)]
-mod test_run_id;
+mod test_name;
 #[cfg(test)]
 mod test_user;
 
@@ -26,7 +20,9 @@ mod error;
 mod logging;
 mod rate_limit;
 mod runtime;
-mod test_name;
+mod test_id;
+mod test_message;
+mod test_run_id;
 mod test_user_id;
 
 fn main() {

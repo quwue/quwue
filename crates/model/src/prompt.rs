@@ -17,11 +17,8 @@ impl Prompt {
   pub fn reactions(self) -> Vec<Emoji> {
     match self {
       Welcome => vec![ThumbsUp],
-      Quiescent => vec![],
       Candidate { .. } => vec![ThumbsDown, ThumbsUp],
-      Bio => vec![],
-      ProfileImage => vec![],
-      Match { .. } => vec![],
+      Bio | ProfileImage | Quiescent | Match { .. } => vec![],
     }
   }
 

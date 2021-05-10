@@ -38,8 +38,8 @@ impl User {
     };
 
     Update {
-      action: Some(action.clone()),
-      prompt: self.next_prompt(action),
+      prompt: self.next_prompt(&action),
+      action: Some(action),
     }
   }
 
@@ -53,16 +53,11 @@ impl User {
         if content.to_lowercase() == "ok" {
           return Some(Action::Welcome);
         },
-      Candidate { .. } => match content.to_lowercase().as_str() {
-        "yes" => todo!(),
-        "no" => todo!(),
-        _ => {},
-      },
       Bio =>
         return Some(Action::SetBio {
-          text: content.to_string(),
+          text: content.to_owned(),
         }),
-      Quiescent | ProfileImage | Match { .. } => {},
+      Candidate { .. } | Quiescent | ProfileImage | Match { .. } => {},
     }
 
     None
@@ -96,8 +91,8 @@ impl User {
     }
   }
 
-  fn next_prompt(&self, action: Action) -> Prompt {
-    if !(self.welcomed || action == Action::Welcome) {
+  fn next_prompt(&self, action: &Action) -> Prompt {
+    if !(self.welcomed || *action == Action::Welcome) {
       return Prompt::Welcome;
     }
 

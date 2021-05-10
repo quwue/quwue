@@ -1,5 +1,4 @@
 use crate::common::*;
-use std::fmt::Write;
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct TestRunId {
@@ -21,7 +20,9 @@ impl TestRunId {
     Some(test_message)
   }
 
+  #[cfg(test)]
   pub(crate) fn prefix_message(self, test_user_id: &TestUserId, msg: &str) -> String {
+    use std::fmt::Write;
     let mut prefixed = String::new();
     write!(prefixed, "test-{}-{} {}", self.run, test_user_id, msg).unwrap();
     prefixed

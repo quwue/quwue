@@ -16,8 +16,8 @@ fn criterion_benchmark(c: &mut Criterion) {
   let mut id = 0;
   c.bench_with_input(BenchmarkId::new("benchmark", 1000), &db, |b, s| {
     b.to_async(&runtime).iter(|| {
-      benchmark(&s, id);
       id += 1;
+      benchmark(&s, id)
     })
   });
 }

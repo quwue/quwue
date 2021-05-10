@@ -180,9 +180,9 @@ impl Db {
     };
 
     let update_tx = UpdateTx {
-      user_id,
       prompt,
       tx,
+      user_id,
     };
 
     Ok(update_tx)
@@ -306,6 +306,7 @@ impl Db {
 
   #[cfg(test)]
   async fn user_count(&self) -> Result<u64> {
+    #[allow(clippy::cast_sign_loss)]
     Ok(
       sqlx::query!("SELECT COUNT(*) as count FROM users")
         .fetch_one(&self.pool)
@@ -538,7 +539,7 @@ mod tests {
 
     let update = Update {
       action: Some(Action::SetBio {
-        text: "bio!".to_string(),
+        text: "bio!".to_owned(),
       }),
       prompt: Prompt::Bio,
     };
@@ -552,7 +553,7 @@ mod tests {
       id: 1,
       welcomed: false,
       prompt_message: Some(prompt_message),
-      bio: Some("bio!".to_string()),
+      bio: Some("bio!".to_owned()),
       profile_image_url: None,
       discord_id,
     };

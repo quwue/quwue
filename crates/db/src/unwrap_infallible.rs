@@ -10,7 +10,6 @@ impl<T> UnwrapInfallible for Result<T, Infallible> {
   type Unwrapped = T;
 
   fn unwrap_infallible(self) -> Self::Unwrapped {
-    #[allow(clippy::unwrap_used)]
     self.unwrap()
   }
 }
