@@ -59,3 +59,10 @@ push remote: ci
 
 pr remote: (push remote)
 	hub pull-request -o
+
+done remote branch=`git rev-parse --abbrev-ref HEAD`:
+	git checkout master
+	git diff --no-ext-diff --quiet --exit-code
+	git pull --rebase {{remote}} master
+	git diff --no-ext-diff --quiet --exit-code {{branch}}
+	git branch -D {{branch}}
