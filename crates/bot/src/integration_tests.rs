@@ -97,7 +97,7 @@ fn complete_profile() {
 #[instrument]
 #[test]
 #[ignore]
-fn multi_user_message_test() {
+fn multi_user_message() {
   test(async {
     let mut bot = test_bot!().await;
     let mut a = bot.new_user().await;
@@ -117,7 +117,7 @@ fn multi_user_message_test() {
 #[instrument]
 #[test]
 #[ignore]
-fn multi_user_react_test() {
+fn multi_user_react() {
   test(async {
     let mut bot = test_bot!().await;
     let mut a = bot.new_user().await;
