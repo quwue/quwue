@@ -1,8 +1,7 @@
 // stdlib
 pub(crate) use std::{
-  collections::BTreeMap,
   env,
-  fmt::{self, Display, Formatter, Write},
+  fmt::{self, Display, Formatter},
   io,
   ops::Deref,
   panic, process,
@@ -32,7 +31,7 @@ pub(crate) use ::{
 // local dependencies
 pub(crate) use ::{
   db::Db,
-  model::{Response, User},
+  model::{Action, Prompt, Response, User},
 };
 
 // logging macros
@@ -54,7 +53,10 @@ pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
 #[cfg(test)]
 mod test {
   // stdlib
-  pub(crate) use std::time::{Duration, Instant};
+  pub(crate) use std::{
+    collections::BTreeMap,
+    time::{Duration, Instant},
+  };
 
   // dependencies
   pub(crate) use ::{
@@ -78,7 +80,7 @@ mod test {
   };
 
   // local dependencies
-  pub(crate) use model::{Emoji, Prompt};
+  pub(crate) use model::Emoji;
 
   // macros
   pub(crate) use crate::test_bot;

@@ -53,6 +53,9 @@ impl TestUser {
           Ok(join_error) => panic!("Quwue failed: {}", join_error),
           Err(recv_error) => panic!("Failed to read from quwue channel: {}", recv_error),
         }
+      },
+      _ = time::sleep(Duration::from_secs(60)).fuse() => {
+        panic!("TestUser::receive timed out!")
       }
     }
   }

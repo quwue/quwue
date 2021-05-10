@@ -209,3 +209,74 @@ fn multi_user_candidate_accept() {
     c.expect_prompt(Prompt::Quiescent).await;
   })
 }
+
+#[instrument]
+#[test]
+#[ignore]
+fn candidate_interrupt() {
+  test(async {
+    let mut bot = test_bot!().await;
+    let mut a = bot.new_user().await;
+    let mut b = bot.new_user().await;
+
+    a.send_message("hi").await;
+    let id = a.expect_prompt(Prompt::Welcome).await;
+    a.send_reaction(id, Emoji::ThumbsUp).await;
+    a.expect_prompt(Prompt::Bio).await;
+    a.send_message("my bio!").await;
+    a.expect_prompt(Prompt::ProfileImage).await;
+    a.send_attachment("image.png", create_test_png()).await;
+    a.expect_prompt(Prompt::Quiescent).await;
+
+    b.send_message("hi").await;
+    let id = b.expect_prompt(Prompt::Welcome).await;
+    b.send_reaction(id, Emoji::ThumbsUp).await;
+    b.expect_prompt(Prompt::Bio).await;
+    b.send_message("my bio!").await;
+    b.expect_prompt(Prompt::ProfileImage).await;
+    b.send_attachment("image.png", create_test_png()).await;
+
+    let id = b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
+    b.send_reaction(id, Emoji::ThumbsUp).await;
+
+    a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
+  })
+}
+
+#[instrument]
+#[test]
+#[ignore]
+fn match_prompt() {
+  test(async {
+    let mut bot = test_bot!().await;
+    let mut a = bot.new_user().await;
+    let mut b = bot.new_user().await;
+
+    a.send_message("hi").await;
+    let id = a.expect_prompt(Prompt::Welcome).await;
+    a.send_reaction(id, Emoji::ThumbsUp).await;
+    a.expect_prompt(Prompt::Bio).await;
+    a.send_message("a's bio!").await;
+    a.expect_prompt(Prompt::ProfileImage).await;
+    a.send_attachment("image.png", create_test_png()).await;
+    a.expect_prompt(Prompt::Quiescent).await;
+
+    b.send_message("hi").await;
+    let id = b.expect_prompt(Prompt::Welcome).await;
+    b.send_reaction(id, Emoji::ThumbsUp).await;
+    b.expect_prompt(Prompt::Bio).await;
+    b.send_message("b's bio!").await;
+    b.expect_prompt(Prompt::ProfileImage).await;
+    b.send_attachment("image.png", create_test_png()).await;
+
+    let id = b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
+    b.send_reaction(id, Emoji::ThumbsUp).await;
+    b.expect_prompt(Prompt::Quiescent).await;
+
+    let id = a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
+    a.send_reaction(id, Emoji::ThumbsUp).await;
+
+    a.expect_prompt(Prompt::Match { id: b.id() }).await;
+    b.expect_prompt(Prompt::Match { id: a.id() }).await;
+  })
+}

@@ -1,4 +1,5 @@
 use crate::common::*;
+use std::fmt::Write;
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct TestRunId {

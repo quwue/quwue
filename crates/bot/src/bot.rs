@@ -241,7 +241,7 @@ impl Bot {
 
     let user_id = user.discord_id;
 
-    let mut tx = self.db.prepare(user_id, update).await?;
+    let mut tx = self.db.prepare(user_id, &update).await?;
 
     let prompt = tx.prompt();
 
@@ -263,6 +263,41 @@ impl Bot {
     }
 
     tx.commit(prompt_message.id).await?;
+
+    if let Some(Action::AcceptCandidate { id: candidate_id }) = update.action {
+      if let Some(mut tx) = self
+        .db
+        .prepare_interrupt_for_accept(user_id, candidate_id)
+        .await?
+      {
+        let channel_id = if cfg!(test) {
+          channel_id
+        } else {
+          self.client().create_private_channel(candidate_id).await?.id
+        };
+
+        let prompt = tx.prompt();
+
+        let prompt_text = Db::prompt_text(&mut tx.inner_transaction(), prompt).await?;
+
+        rate_limit::wait().await;
+        let prompt_message = self
+          .create_message(candidate_id, channel_id, &prompt_text)
+          .await?;
+
+        for emoji in prompt.reactions() {
+          let reaction_type = emoji.into();
+
+          rate_limit::wait().await;
+          self
+            .client()
+            .create_reaction(channel_id, prompt_message.id, reaction_type)
+            .await?;
+        }
+
+        tx.commit(prompt_message.id).await?;
+      }
+    }
 
     Ok(())
   }

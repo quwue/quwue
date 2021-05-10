@@ -62,7 +62,7 @@ impl User {
         return Some(Action::SetBio {
           text: content.to_string(),
         }),
-      Quiescent | ProfileImage => {},
+      Quiescent | ProfileImage | Match { .. } => {},
     }
 
     None
@@ -83,7 +83,7 @@ impl User {
         ThumbsUp => Some(Action::AcceptCandidate { id }),
         ThumbsDown => Some(Action::RejectCandidate { id }),
       },
-      Quiescent | Bio | ProfileImage => None,
+      Quiescent | Bio | ProfileImage | Match { .. } => None,
     }
   }
 
@@ -92,7 +92,7 @@ impl User {
 
     match prompt {
       ProfileImage => Some(Action::SetProfileImage { url }),
-      Welcome | Quiescent | Candidate { .. } | Bio => None,
+      Welcome | Quiescent | Candidate { .. } | Bio | Match { .. } => None,
     }
   }
 
