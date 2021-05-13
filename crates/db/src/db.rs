@@ -333,28 +333,31 @@ impl Db {
                     to show you!"
         .into(),
       Candidate { id } => {
-        let id_storage = id.store();
-
-        let row = sqlx::query!("SELECT bio from users where discord_id = ?", id_storage)
-          .fetch_optional(tx)
-          .await?;
-
-        if let Some(user) = row {
-          if let Some(bio) = user.bio {
-            format!("New potential match:\n{}", bio)
-          } else {
-            return Err(Error::CandidateMissingBio { id });
-          }
-        } else {
-          return Err(Error::CandidateUnknown { id });
-        }
+        format!("New potential match:\n{}", Self::bio(tx, id).await?)
       },
       Bio => "Please enter a bio to show to other users.".into(),
       ProfileImage => "Please upload a profile photo.".into(),
-      Match { id } => format!("You've matched with <@{}>, send them a message!", id),
+      Match { id } => format!(
+        "You matched with <@{}>:\n{}\nSend them a message!",
+        id,
+        Self::bio(tx, id).await?,
+      ),
     };
 
     Ok(text)
+  }
+
+  async fn bio(tx: &mut Transaction<'_>, id: UserId) -> Result<String> {
+    let id_storage = id.store();
+
+    let row = sqlx::query!("SELECT bio from users where discord_id = ?", id_storage)
+      .fetch_optional(tx)
+      .await?;
+
+    row
+      .ok_or(Error::UserUnknown { id })?
+      .bio
+      .ok_or(Error::UserMissingBio { id })
   }
 
   async fn respond_to_candidate(

@@ -15,7 +15,7 @@ test *args:
 integration *args:
 	cargo test --all -- --test-threads 1 --ignored {{args}}
 
-ci: build test-all forbid fmt-check clean-check
+ci: build test-all forbid fmt-check clippy clean-check
 
 build:
 	cargo build --all-features --all-targets
@@ -54,7 +54,7 @@ dev-deps:
 	brew install gnuplot
 
 push remote: ci
-	git branch | grep '* master'
+	! git branch | grep '* master'
 	git push {{remote}}
 
 pr remote: (push remote)

@@ -63,4 +63,8 @@ impl TestBot {
     let test_user_id = TestUserId::new(self.test_name.clone(), next_user_number);
     TestUser::new(self.bot.clone(), self.error.clone(), test_user_id).await
   }
+
+  pub(crate) fn db(&self) -> &Db {
+    self.bot.db()
+  }
 }

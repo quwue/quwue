@@ -276,7 +276,20 @@ fn match_prompt() {
     let id = a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
     a.send_reaction(id, Emoji::ThumbsUp).await;
 
-    a.expect_prompt(Prompt::Match { id: b.id() }).await;
-    b.expect_prompt(Prompt::Match { id: a.id() }).await;
+    let prompt = Prompt::Match { id: b.id() };
+    assert!(bot
+      .db()
+      .prompt_text_outside_update_transaction(prompt)
+      .await
+      .contains("b's bio!"));
+    a.expect_prompt(prompt).await;
+
+    let prompt = Prompt::Match { id: a.id() };
+    assert!(bot
+      .db()
+      .prompt_text_outside_update_transaction(prompt)
+      .await
+      .contains("a's bio!"));
+    b.expect_prompt(prompt).await;
   })
 }

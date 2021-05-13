@@ -21,10 +21,10 @@ pub enum Error {
     source: url::ParseError,
     text:   String,
   },
-  CandidateMissingBio {
+  UserMissingBio {
     id: UserId,
   },
-  CandidateUnknown {
+  UserUnknown {
     id: UserId,
   },
 }
