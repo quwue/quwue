@@ -43,11 +43,14 @@ impl TestUser {
       .await;
   }
 
-  pub(crate) async fn receive(&mut self) -> (MessageId, TestEvent) {
+  pub(crate) async fn receive_with_timeout(
+    &mut self,
+    duration: Duration,
+  ) -> Option<(MessageId, TestEvent)> {
     #![allow(clippy::mut_mut)]
     select! {
       result = self.events.recv().fuse() => {
-        result.expect("channel sender dropped")
+        Some(result.expect("channel sender dropped"))
       },
       result = self.error.clone() => {
         match result.as_ref() {
@@ -55,10 +58,17 @@ impl TestUser {
           Err(recv_error) => panic!("Failed to read from quwue channel: {}", recv_error),
         }
       },
-      _ = time::sleep(Duration::from_secs(60)).fuse() => {
-        panic!("TestUser::receive timed out!")
+      _ = time::sleep(duration).fuse() => {
+        None
       }
     }
+  }
+
+  pub(crate) async fn receive(&mut self) -> (MessageId, TestEvent) {
+    self
+      .receive_with_timeout(Duration::from_secs(60))
+      .await
+      .expect("TestUser::receive timed out!")
   }
 
   pub(crate) async fn expect_message(&mut self, want: &str) -> MessageId {
@@ -103,6 +113,12 @@ impl TestUser {
     }
 
     id
+  }
+
+  pub(crate) async fn expect_nothing(&mut self) {
+    if let Some(event) = self.receive_with_timeout(Duration::from_secs(10)).await {
+      panic!("Received unexpected message: {:?}", event)
+    }
   }
 
   pub(crate) fn id(&self) -> UserId {

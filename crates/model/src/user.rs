@@ -57,7 +57,12 @@ impl User {
         return Some(Action::SetBio {
           text: content.to_owned(),
         }),
-      Candidate { .. } | Quiescent | ProfileImage | Match { .. } => {},
+      Candidate { id } => match content.to_lowercase().as_str() {
+        "yes" | "y" => return Some(Action::AcceptCandidate { id }),
+        "no" | "n" => return Some(Action::RejectCandidate { id }),
+        _ => {},
+      },
+      Quiescent | ProfileImage | Match { .. } => {},
     }
 
     None
