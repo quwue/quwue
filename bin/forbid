@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+which rg
+
 ! rg                    \
   --color always        \
   --ignore-case         \
