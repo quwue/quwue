@@ -23,6 +23,9 @@ version          = "1.0.0"
 default-features = false
 features         = ["net", "rt", "sync", "rt-multi-thread", "macros", "time"]
 
+[build-dependencies]
+camino = "1.0.4"
+
 [build-dependencies.sqlx]
 version  = "0.5.1"
 features = ["runtime-tokio-rustls", "sqlite"]
