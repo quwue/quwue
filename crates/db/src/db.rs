@@ -448,6 +448,8 @@ impl Db {
 mod tests {
   use super::*;
 
+  use guard::guard_unwrap;
+
   #[tokio::test(flavor = "multi_thread")]
   async fn create_user() {
     let db = Db::new().await.unwrap();
@@ -854,5 +856,53 @@ mod tests {
     assert_eq!(tx.prompt, Prompt::Match { id: a });
 
     tx.commit(MessageId(201)).await.unwrap();
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn inserting_responses_from_non_existant_users_is_an_error() {
+    let db = Db::new().await.unwrap();
+
+    let a = UserId(100);
+    db.create_profile(a).await;
+
+    let mut tx = db.pool.begin().await.unwrap();
+
+    let error = sqlx::query!(
+      "INSERT INTO responses
+        (discord_id, candidate_id, response)
+      VALUES
+        (1, 100, 1)",
+    )
+    .execute(&mut tx)
+    .await
+    .unwrap_err();
+
+    guard_unwrap!(let sqlx::Error::Database(error) = error);
+
+    assert_eq!(error.message(), "FOREIGN KEY constraint failed");
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn inserting_responses_to_non_existant_users_is_an_error() {
+    let db = Db::new().await.unwrap();
+
+    let a = UserId(100);
+    db.create_profile(a).await;
+
+    let mut tx = db.pool.begin().await.unwrap();
+
+    let error = sqlx::query!(
+      "INSERT INTO responses
+        (discord_id, candidate_id, response)
+      VALUES
+        (100, 1, 1)",
+    )
+    .execute(&mut tx)
+    .await
+    .unwrap_err();
+
+    guard_unwrap!(let sqlx::Error::Database(error) = error);
+
+    assert_eq!(error.message(), "FOREIGN KEY constraint failed");
   }
 }
