@@ -7,7 +7,11 @@ async fn main() {
   let db_path = Path::new(&env::var_os("OUT_DIR").unwrap()).join("db.sqlite");
   let db_path = Utf8PathBuf::try_from(db_path).unwrap();
 
-  let db_url = format!("sqlite:///{}", db_path.as_str().replace('\\', "\\\\"));
+  let db_url = if cfg!(windows) {
+    format!("sqlite:///{}", db_path.as_str().replace('\\', "\\\\"))
+  } else {
+    format!("sqlite:{}", db_path)
+  };
 
   Sqlite::create_database(&db_url).await.unwrap();
 
