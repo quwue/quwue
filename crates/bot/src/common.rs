@@ -4,7 +4,9 @@ pub(crate) use std::{
   fmt::{self, Display, Formatter},
   io,
   ops::Deref,
-  panic, process,
+  panic,
+  path::{Path, PathBuf},
+  process,
   sync::Arc,
   time::{Duration, Instant},
 };
@@ -13,6 +15,7 @@ pub(crate) use std::{
 pub(crate) use ::{
   futures_util::StreamExt,
   snafu::{ResultExt, Snafu},
+  structopt::StructOpt,
   tokio::{runtime::Runtime, sync::Mutex},
   tracing_log::LogTracer,
   tracing_subscriber::{layer::SubscriberExt, EnvFilter},
@@ -44,8 +47,8 @@ pub(crate) use crate::{async_static, error, logging, rate_limit, runtime};
 
 // structs and enums
 pub(crate) use crate::{
-  bot::Bot, error::Error, test_id::TestId, test_message::TestMessage, test_run_id::TestRunId,
-  test_user_id::TestUserId,
+  arguments::Arguments, bot::Bot, error::Error, test_id::TestId, test_message::TestMessage,
+  test_run_id::TestRunId, test_user_id::TestUserId,
 };
 
 // type aliases
@@ -66,6 +69,7 @@ mod test {
     http::StatusCode,
     once_cell::sync::Lazy,
     serde::Deserialize,
+    tempfile::TempDir,
     tokio::{
       sync::{mpsc, RwLock},
       time,

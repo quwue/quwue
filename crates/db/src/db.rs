@@ -1,7 +1,5 @@
 use crate::common::*;
 
-use sqlx::SqlitePool;
-
 #[derive(Debug)]
 pub struct Db {
   pool: SqlitePool,
@@ -50,8 +48,14 @@ macro_rules! load_user {
 }
 
 impl Db {
-  pub async fn new() -> Result<Self> {
-    let pool = SqlitePool::connect("sqlite::memory:").await?;
+  pub async fn connect(path: &Path) -> Result<Self> {
+    let url = db_url::db_url(path).ok_or_else(|| Error::PathUnicodeDecode {
+      path: path.to_owned(),
+    })?;
+
+    Sqlite::create_database(&url).await.unwrap();
+
+    let pool = SqlitePool::connect(&url).await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
 
@@ -448,17 +452,59 @@ impl Db {
 mod tests {
   use super::*;
 
-  use guard::guard_unwrap;
+  struct TestContext {
+    tmpdir:  TempDir,
+    db:      Db,
+    db_path: PathBuf,
+  }
+
+  impl TestContext {
+    async fn new() -> Self {
+      let tmpdir = tempdir().unwrap();
+
+      let db_path = tmpdir.path().join("db.sqlite");
+
+      let db = Db::connect(&db_path).await.unwrap();
+
+      TestContext {
+        tmpdir,
+        db,
+        db_path,
+      }
+    }
+  }
 
   #[tokio::test(flavor = "multi_thread")]
-  async fn create_user() {
-    let db = Db::new().await.unwrap();
-
-    let discord_id = UserId(100);
+  async fn on_disk_database_is_persistant() {
+    let TestContext {
+      tmpdir: _tmpdir,
+      db,
+      db_path,
+    } = TestContext::new().await;
 
     assert_eq!(db.user_count().await.unwrap(), 0);
 
-    let have = db.user(discord_id).await.unwrap();
+    let a = UserId(100);
+    db.create_profile(a).await;
+
+    assert_eq!(db.user_count().await.unwrap(), 1);
+
+    drop(db);
+
+    let db = Db::connect(&db_path).await.unwrap();
+
+    assert_eq!(db.user_count().await.unwrap(), 1);
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn create_user() {
+    let context = TestContext::new().await;
+
+    let discord_id = UserId(100);
+
+    assert_eq!(context.db.user_count().await.unwrap(), 0);
+
+    let have = context.db.user(discord_id).await.unwrap();
     let want = User {
       id: 1,
       prompt_message: None,
@@ -469,20 +515,20 @@ mod tests {
     };
     assert_eq!(have, want);
 
-    assert_eq!(db.user_count().await.unwrap(), 1);
+    assert_eq!(context.db.user_count().await.unwrap(), 1);
 
-    let have = db.user(discord_id).await.unwrap();
+    let have = context.db.user(discord_id).await.unwrap();
     assert_eq!(have, want);
   }
 
   #[tokio::test(flavor = "multi_thread")]
   async fn welcome() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let discord_id = UserId(100);
     let message_id = MessageId(200);
 
-    let have = db.user(discord_id).await.unwrap();
+    let have = context.db.user(discord_id).await.unwrap();
     let want = User {
       id: 1,
       prompt_message: None,
@@ -503,11 +549,11 @@ mod tests {
       prompt: Prompt::Welcome,
     };
 
-    let tx = db.prepare(have.discord_id, &update).await.unwrap();
+    let tx = context.db.prepare(have.discord_id, &update).await.unwrap();
 
     tx.commit(message_id).await.unwrap();
 
-    let have = db.user(discord_id).await.unwrap();
+    let have = context.db.user(discord_id).await.unwrap();
     let want = User {
       id: 1,
       welcomed: true,
@@ -521,12 +567,12 @@ mod tests {
 
   #[tokio::test(flavor = "multi_thread")]
   async fn set_bio() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let discord_id = UserId(100);
     let message_id = MessageId(200);
 
-    let have = db.user(discord_id).await.unwrap();
+    let have = context.db.user(discord_id).await.unwrap();
     let want = User {
       id: 1,
       prompt_message: None,
@@ -549,11 +595,11 @@ mod tests {
       prompt: Prompt::Bio,
     };
 
-    let tx = db.prepare(have.discord_id, &update).await.unwrap();
+    let tx = context.db.prepare(have.discord_id, &update).await.unwrap();
 
     tx.commit(message_id).await.unwrap();
 
-    let have = db.user(discord_id).await.unwrap();
+    let have = context.db.user(discord_id).await.unwrap();
     let want = User {
       id: 1,
       welcomed: false,
@@ -567,12 +613,12 @@ mod tests {
 
   #[tokio::test(flavor = "multi_thread")]
   async fn set_profile_image_url() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let discord_id = UserId(100);
     let message_id = MessageId(200);
 
-    let have = db.user(discord_id).await.unwrap();
+    let have = context.db.user(discord_id).await.unwrap();
     let want = User {
       id: 1,
       prompt_message: None,
@@ -595,11 +641,11 @@ mod tests {
       prompt: Prompt::ProfileImage,
     };
 
-    let tx = db.prepare(have.discord_id, &update).await.unwrap();
+    let tx = context.db.prepare(have.discord_id, &update).await.unwrap();
 
     tx.commit(message_id).await.unwrap();
 
-    let have = db.user(discord_id).await.unwrap();
+    let have = context.db.user(discord_id).await.unwrap();
     let want = User {
       id: 1,
       welcomed: false,
@@ -613,40 +659,40 @@ mod tests {
 
   #[tokio::test(flavor = "multi_thread")]
   async fn expect_candidate() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let a = UserId(100);
     let b = UserId(101);
 
-    db.create_profile(a).await;
-    db.create_profile(b).await;
+    context.db.create_profile(a).await;
+    context.db.create_profile(b).await;
 
     let update = Update {
       action: None,
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Candidate { id: b })
   }
 
   #[tokio::test(flavor = "multi_thread")]
   async fn filter_out_accepted_candidates() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let a = UserId(100);
     let b = UserId(101);
 
-    db.create_profile(a).await;
-    db.create_profile(b).await;
+    context.db.create_profile(a).await;
+    context.db.create_profile(b).await;
 
     let update = Update {
       action: None,
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Candidate { id: b });
 
@@ -657,27 +703,27 @@ mod tests {
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
   }
 
   #[tokio::test(flavor = "multi_thread")]
   async fn filter_out_rejected_candidates() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let a = UserId(100);
     let b = UserId(101);
 
-    db.create_profile(a).await;
-    db.create_profile(b).await;
+    context.db.create_profile(a).await;
+    context.db.create_profile(b).await;
 
     let update = Update {
       action: None,
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Candidate { id: b });
 
@@ -688,27 +734,27 @@ mod tests {
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
   }
 
   #[tokio::test(flavor = "multi_thread")]
   async fn filter_out_candidates_that_have_rejected_user() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let a = UserId(100);
     let b = UserId(101);
 
-    db.create_profile(a).await;
-    db.create_profile(b).await;
+    context.db.create_profile(a).await;
+    context.db.create_profile(b).await;
 
     let update = Update {
       action: None,
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Candidate { id: b });
 
@@ -719,7 +765,7 @@ mod tests {
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
 
@@ -730,27 +776,27 @@ mod tests {
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(b, &update).await.unwrap();
+    let tx = context.db.prepare(b, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
   }
 
   #[tokio::test(flavor = "multi_thread")]
   async fn dont_filter_candidates_that_have_accepted_user() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let a = UserId(100);
     let b = UserId(101);
 
-    db.create_profile(a).await;
-    db.create_profile(b).await;
+    context.db.create_profile(a).await;
+    context.db.create_profile(b).await;
 
     let update = Update {
       action: None,
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Candidate { id: b });
 
@@ -761,7 +807,7 @@ mod tests {
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
 
@@ -772,27 +818,27 @@ mod tests {
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(b, &update).await.unwrap();
+    let tx = context.db.prepare(b, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Candidate { id: a });
   }
 
   #[tokio::test(flavor = "multi_thread")]
   async fn allow_multiple_responses() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let a = UserId(100);
     let b = UserId(101);
 
-    db.create_profile(a).await;
-    db.create_profile(b).await;
+    context.db.create_profile(a).await;
+    context.db.create_profile(b).await;
 
     let update = Update {
       action: None,
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Candidate { id: b });
 
@@ -803,44 +849,44 @@ mod tests {
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
 
     tx.commit(MessageId(201)).await.unwrap();
 
-    assert!(db.response(a, b).await);
+    assert!(context.db.response(a, b).await);
 
     let update = Update {
       action: Some(Action::RejectCandidate { id: b }),
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
 
     tx.commit(MessageId(201)).await.unwrap();
 
-    assert!(!db.response(a, b).await);
+    assert!(!context.db.response(a, b).await);
   }
 
   #[tokio::test(flavor = "multi_thread")]
   async fn show_match_prompt_after_mutual_acceptance() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let a = UserId(100);
     let b = UserId(101);
 
-    db.create_profile(a).await;
-    db.create_profile(b).await;
+    context.db.create_profile(a).await;
+    context.db.create_profile(b).await;
 
     let update = Update {
       action: Some(Action::AcceptCandidate { id: b }),
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
 
@@ -851,7 +897,7 @@ mod tests {
       prompt: Prompt::Quiescent,
     };
 
-    let tx = db.prepare(b, &update).await.unwrap();
+    let tx = context.db.prepare(b, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Match { id: a });
 
@@ -860,12 +906,12 @@ mod tests {
 
   #[tokio::test(flavor = "multi_thread")]
   async fn inserting_responses_from_non_existant_users_is_an_error() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let a = UserId(100);
-    db.create_profile(a).await;
+    context.db.create_profile(a).await;
 
-    let mut tx = db.pool.begin().await.unwrap();
+    let mut tx = context.db.pool.begin().await.unwrap();
 
     let error = sqlx::query!(
       "INSERT INTO responses
@@ -884,12 +930,12 @@ mod tests {
 
   #[tokio::test(flavor = "multi_thread")]
   async fn inserting_responses_to_non_existant_users_is_an_error() {
-    let db = Db::new().await.unwrap();
+    let context = TestContext::new().await;
 
     let a = UserId(100);
-    db.create_profile(a).await;
+    context.db.create_profile(a).await;
 
-    let mut tx = db.pool.begin().await.unwrap();
+    let mut tx = context.db.pool.begin().await.unwrap();
 
     let error = sqlx::query!(
       "INSERT INTO responses

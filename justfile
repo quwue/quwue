@@ -57,8 +57,8 @@ push remote: ci
 	! git branch | grep '* master'
 	git push {{remote}}
 
-pr remote: (push remote)
-	hub pull-request -o
+pr: ci
+	gh pr create --web
 
 done remote branch=`git rev-parse --abbrev-ref HEAD`:
 	git checkout master
