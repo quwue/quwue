@@ -4,7 +4,9 @@ pub(crate) use std::{
   fmt::{self, Display, Formatter},
   io,
   ops::Deref,
-  panic, process,
+  panic,
+  path::PathBuf,
+  process,
   sync::Arc,
   time::{Duration, Instant},
 };
@@ -13,6 +15,7 @@ pub(crate) use std::{
 pub(crate) use ::{
   futures_util::StreamExt,
   snafu::{ResultExt, Snafu},
+  structopt::StructOpt,
   tokio::{runtime::Runtime, sync::Mutex},
   tracing_log::LogTracer,
   tracing_subscriber::{layer::SubscriberExt, EnvFilter},
@@ -55,7 +58,7 @@ pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
 #[cfg(test)]
 mod test {
   // stdlib
-  pub(crate) use std::collections::BTreeMap;
+  pub(crate) use std::{collections::BTreeMap, path::Path};
 
   // dependencies
   pub(crate) use ::{
@@ -66,6 +69,7 @@ mod test {
     http::StatusCode,
     once_cell::sync::Lazy,
     serde::Deserialize,
+    tempfile::TempDir,
     tokio::{
       sync::{mpsc, RwLock},
       time,

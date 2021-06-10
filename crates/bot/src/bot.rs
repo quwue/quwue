@@ -32,13 +32,21 @@ impl Deref for Bot {
   }
 }
 
+#[derive(StructOpt)]
+struct Arguments {
+  #[structopt(long)]
+  db_path: PathBuf,
+}
+
 impl Bot {
   pub(crate) fn main() -> Result<()> {
     logging::init();
 
+    let arguments = Arguments::from_args();
+
     let runtime = runtime::init()?;
 
-    runtime.block_on(async { Self::new(None).await?.run().await })?;
+    runtime.block_on(async { Self::new(&arguments.db_path, None).await?.run().await })?;
 
     Ok(())
   }
@@ -332,8 +340,8 @@ impl Bot {
   }
 
   #[cfg(test)]
-  pub(crate) async fn new_test_instance(test_id: TestId) -> Result<Self> {
-    Self::new(Some(test_id)).await
+  pub(crate) async fn new_test_instance(db_path: &Path, test_id: TestId) -> Result<Self> {
+    Self::new(db_path, Some(test_id)).await
   }
 
   fn client(&self) -> &Client {
@@ -363,7 +371,7 @@ impl Bot {
     Ok(cluster)
   }
 
-  async fn new(test_id: Option<TestId>) -> Result<Self> {
+  async fn new(db_path: &Path, test_id: Option<TestId>) -> Result<Self> {
     let cluster = if test_id.is_some() {
       test_cluster::get().await.clone()
     } else {
@@ -378,7 +386,7 @@ impl Bot {
 
     let cache = InMemoryCache::new();
 
-    let db = Db::new().await?;
+    let db = Db::connect(db_path).await?;
 
     let inner = Inner {
       cache,

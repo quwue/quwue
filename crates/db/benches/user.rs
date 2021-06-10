@@ -8,11 +8,15 @@ async fn benchmark(db: &Db, id: u64) {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
+  let tmpdir = tempfile::tempdir().unwrap();
+
+  let db_path = tmpdir.path().join("db.sqlite");
+
   let runtime = tokio::runtime::Builder::new_multi_thread()
     .enable_all()
     .build()
     .unwrap();
-  let db = runtime.block_on(async { Db::new().await.unwrap() });
+  let db = runtime.block_on(async { Db::connect(&db_path).await.unwrap() });
   let mut id = 0;
   c.bench_with_input(BenchmarkId::new("benchmark", 1000), &db, |b, s| {
     b.to_async(&runtime).iter(|| {
