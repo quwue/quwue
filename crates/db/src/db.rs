@@ -48,10 +48,14 @@ macro_rules! load_user {
 }
 
 impl Db {
-  pub async fn connect(db_url: &str) -> Result<Self> {
-    Sqlite::create_database(db_url).await.unwrap();
+  pub async fn connect(path: &Path) -> Result<Self> {
+    let url = db_url::db_url(path).ok_or_else(|| Error::DatabasePathUnicode {
+      path: path.to_owned(),
+    })?;
 
-    let pool = SqlitePool::connect(db_url).await?;
+    Sqlite::create_database(&url).await.unwrap();
+
+    let pool = SqlitePool::connect(&url).await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
 
@@ -449,23 +453,24 @@ mod tests {
   use super::*;
 
   struct TestContext {
-    tmpdir: TempDir,
-    db:     Db,
-    db_uri: String,
+    tmpdir:  TempDir,
+    db:      Db,
+    db_path: PathBuf,
   }
 
   impl TestContext {
     async fn new() -> Self {
       let tmpdir = tempdir().unwrap();
 
-      let db_uri = format!(
-        "sqlite:{}",
-        tmpdir.path().join("db.sqlite").to_str().unwrap()
-      );
+      let db_path = tmpdir.path().join("db.sqlite");
 
-      let db = Db::connect(&db_uri).await.unwrap();
+      let db = Db::connect(&db_path).await.unwrap();
 
-      TestContext { tmpdir, db, db_uri }
+      TestContext {
+        tmpdir,
+        db,
+        db_path,
+      }
     }
   }
 
@@ -474,7 +479,7 @@ mod tests {
     let TestContext {
       tmpdir: _tmpdir,
       db,
-      db_uri,
+      db_path,
     } = TestContext::new().await;
 
     assert_eq!(db.user_count().await.unwrap(), 0);
@@ -486,7 +491,7 @@ mod tests {
 
     drop(db);
 
-    let db = Db::connect(&db_uri).await.unwrap();
+    let db = Db::connect(&db_path).await.unwrap();
 
     assert_eq!(db.user_count().await.unwrap(), 1);
   }

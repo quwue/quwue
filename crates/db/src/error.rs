@@ -27,6 +27,9 @@ pub enum Error {
   UserUnknown {
     id: UserId,
   },
+  DatabasePathUnicode {
+    path: PathBuf,
+  },
 }
 
 impl From<sqlx::migrate::MigrateError> for Error {

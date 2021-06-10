@@ -1,5 +1,8 @@
 // stdlib
-pub(crate) use std::convert::Infallible;
+pub(crate) use std::{
+  convert::Infallible,
+  path::{Path, PathBuf},
+};
 
 // dependencies
 pub(crate) use snafu::{ResultExt, Snafu};

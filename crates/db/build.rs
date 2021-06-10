@@ -1,17 +1,11 @@
-use camino::Utf8PathBuf;
 use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
-use std::{convert::TryFrom, env, fs, path::Path};
+use std::{env, fs, path::Path};
 
 #[tokio::main]
 async fn main() {
   let db_path = Path::new(&env::var_os("OUT_DIR").unwrap()).join("db.sqlite");
-  let db_path = Utf8PathBuf::try_from(db_path).unwrap();
 
-  let db_url = if cfg!(windows) {
-    format!("sqlite:///{}", db_path.as_str().replace('\\', "\\\\"))
-  } else {
-    format!("sqlite:{}", db_path)
-  };
+  let db_url = db_url::db_url(&db_path).unwrap();
 
   Sqlite::create_database(&db_url).await.unwrap();
 
