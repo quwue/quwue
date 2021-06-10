@@ -5,7 +5,7 @@ pub(crate) use std::{
   io,
   ops::Deref,
   panic,
-  path::PathBuf,
+  path::{Path, PathBuf},
   process,
   sync::Arc,
   time::{Duration, Instant},
@@ -58,7 +58,7 @@ pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
 #[cfg(test)]
 mod test {
   // stdlib
-  pub(crate) use std::{collections::BTreeMap, path::Path};
+  pub(crate) use std::collections::BTreeMap;
 
   // dependencies
   pub(crate) use ::{
