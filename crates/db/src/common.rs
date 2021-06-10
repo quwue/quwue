@@ -3,6 +3,7 @@ pub(crate) use std::convert::Infallible;
 
 // dependencies
 pub(crate) use snafu::{ResultExt, Snafu};
+pub(crate) use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
 pub(crate) use twilight_model::id::{MessageId, UserId};
 pub(crate) use url::Url;
 
@@ -21,3 +22,12 @@ pub(crate) use crate::{db::Db, error::Error, update_tx::UpdateTx};
 // type aliases
 pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
 pub(crate) type Transaction<'a> = sqlx::Transaction<'a, sqlx::Sqlite>;
+
+#[cfg(test)]
+mod test {
+  pub(crate) use guard::guard_unwrap;
+  pub(crate) use tempfile::{tempdir, TempDir};
+}
+
+#[cfg(test)]
+pub(crate) use self::test::*;
