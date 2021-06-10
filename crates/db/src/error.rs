@@ -27,7 +27,7 @@ pub enum Error {
   UserUnknown {
     id: UserId,
   },
-  DatabasePathUnicode {
+  PathUnicodeDecode {
     path: PathBuf,
   },
 }

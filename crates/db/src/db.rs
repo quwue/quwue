@@ -49,7 +49,7 @@ macro_rules! load_user {
 
 impl Db {
   pub async fn connect(path: &Path) -> Result<Self> {
-    let url = db_url::db_url(path).ok_or_else(|| Error::DatabasePathUnicode {
+    let url = db_url::db_url(path).ok_or_else(|| Error::PathUnicodeDecode {
       path: path.to_owned(),
     })?;
 
