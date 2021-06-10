@@ -13,6 +13,7 @@ mod test_name;
 #[cfg(test)]
 mod test_user;
 
+mod arguments;
 mod async_static;
 mod bot;
 mod common;

@@ -47,8 +47,8 @@ pub(crate) use crate::{async_static, error, logging, rate_limit, runtime};
 
 // structs and enums
 pub(crate) use crate::{
-  bot::Bot, error::Error, test_id::TestId, test_message::TestMessage, test_run_id::TestRunId,
-  test_user_id::TestUserId,
+  arguments::Arguments, bot::Bot, error::Error, test_id::TestId, test_message::TestMessage,
+  test_run_id::TestRunId, test_user_id::TestUserId,
 };
 
 // type aliases

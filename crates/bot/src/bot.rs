@@ -32,12 +32,6 @@ impl Deref for Bot {
   }
 }
 
-#[derive(StructOpt)]
-struct Arguments {
-  #[structopt(long)]
-  db_path: PathBuf,
-}
-
 impl Bot {
   pub(crate) fn main() -> Result<()> {
     logging::init();
