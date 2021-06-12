@@ -24,9 +24,9 @@ twilight-http           = "0.3.0"
 twilight-model          = "0.3.0"
 url                     = "2.2.1"
 
-db      = { path = "../db"      }
-discord = { path = "../discord" }
-model   = { path = "../model"   }
+db      = { path = "crates/db"      }
+discord = { path = "crates/discord" }
+model   = { path = "crates/model"   }
 
 [dependencies.sqlx]
 version  = "0.5.1"
