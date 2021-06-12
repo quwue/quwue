@@ -18,7 +18,7 @@ async_static! {
   test_dispatcher_value,
   TestDispatcher,
   {
-    logging::init();
+    logging::init(None);
     TestDispatcher::init().await
   }
 }
