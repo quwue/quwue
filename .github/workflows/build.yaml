@@ -92,5 +92,5 @@ jobs:
 
     - name: Install
       run: |
-        cargo install --path crates/quwue
+        cargo install --path .
         quwue --version
