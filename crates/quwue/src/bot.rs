@@ -34,9 +34,9 @@ impl Deref for Bot {
 
 impl Bot {
   pub(crate) fn main() -> Result<()> {
-    logging::init();
-
     let arguments = Arguments::from_args();
+
+    logging::init(arguments.log_dir.as_deref());
 
     let runtime = runtime::init()?;
 
