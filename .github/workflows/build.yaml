@@ -89,3 +89,8 @@ jobs:
 
     - name: Check Formatting
       run: cargo +nightly fmt --all -- --check
+
+    - name: Install
+      run: |
+        cargo install --path .
+        quwue --version
