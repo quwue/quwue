@@ -1,0 +1,10 @@
+[Unit]
+Description=Quwue
+
+[Service]
+ExecStart=quwue --db-path ${STATE_DIRECTORY}/db.sqlite
+User=quwue
+StateDirectory=quwue
+
+[Install]
+WantedBy=multi-user.target
