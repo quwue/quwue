@@ -1,12 +1,9 @@
-export EDITOR := 'vim'
-
+bt := '0'
 log := 'warn'
 
-bt := '0'
-
-export RUST_LOG := log
-
+export EDITOR := 'vim'
 export RUST_BACKTRACE := bt
+export RUST_LOG := log
 
 watch *args='check --all --tests':
 	cargo watch --clear --exec '{{args}}'
