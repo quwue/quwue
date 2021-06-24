@@ -14,10 +14,6 @@ defaults:
   run:
     shell: bash
 
-env:
-  # Increment this key to invalidate the cache.
-  CACHE_VERSION: 1
-
 jobs:
   all:
     name: All
@@ -52,7 +48,8 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: cargo-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ github.sha }}
+        restore-keys: ${{ runner.os }}-
 
     - name: Install Clippy
       run: |
