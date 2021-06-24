@@ -1,4 +1,4 @@
 quwue
 =====
 
-A queue..
+A queue.
