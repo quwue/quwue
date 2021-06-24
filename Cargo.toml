@@ -6,7 +6,8 @@ edition = "2018"
 publish = false
 
 [workspace]
-members = ["crates/*"]
+members  = ["crates/*"]
+resolver = "2"
 
 [dependencies]
 ansi_term               = "0.12.1"
