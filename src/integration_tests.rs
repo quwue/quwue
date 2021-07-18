@@ -412,3 +412,41 @@ fn reject_candidate_with_n() {
     a.expect_nothing().await;
   })
 }
+
+#[instrument]
+#[test]
+#[ignore]
+fn candidate_hidden_after_rejection() {
+  test(async {
+    let mut bot = test_bot!().await;
+    let mut a = bot.new_user().await;
+    let mut b = bot.new_user().await;
+
+    a.send_message("hi").await;
+    let id = a.expect_prompt(Prompt::Welcome).await;
+    a.send_reaction(id, Emoji::ThumbsUp).await;
+    a.expect_prompt(Prompt::Bio).await;
+    a.send_message("a's bio!").await;
+    a.expect_prompt(Prompt::ProfileImage).await;
+    a.send_attachment("image.png", create_test_png()).await;
+    a.expect_prompt(Prompt::Quiescent).await;
+
+    b.send_message("hi").await;
+    let id = b.expect_prompt(Prompt::Welcome).await;
+    b.send_reaction(id, Emoji::ThumbsUp).await;
+    b.expect_prompt(Prompt::Bio).await;
+    b.send_message("b's bio!").await;
+    b.expect_prompt(Prompt::ProfileImage).await;
+    b.send_attachment("image.png", create_test_png()).await;
+
+    b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
+    b.send_message("yes").await;
+    b.expect_prompt(Prompt::Quiescent).await;
+
+    a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
+    a.send_message("no").await;
+    a.expect_prompt(Prompt::Quiescent).await;
+
+    b.expect_nothing().await;
+  })
+}
