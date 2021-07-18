@@ -73,7 +73,7 @@ fn complete_profile() {
     let mut bot = test_bot!().await;
     let mut user = bot.new_user().await;
 
-    user.setup("a").await;
+    user.setup().await;
     user.expect_prompt(Prompt::Quiescent).await;
   })
 }
@@ -128,10 +128,10 @@ fn multi_user_candidate() {
     let mut a = bot.new_user().await;
     let mut b = bot.new_user().await;
 
-    a.setup("a").await;
+    a.setup().await;
     a.expect_prompt(Prompt::Quiescent).await;
 
-    b.setup("b").await;
+    b.setup().await;
     b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
   })
 }
@@ -146,12 +146,12 @@ fn multi_user_candidate_accept() {
     let mut b = bot.new_user().await;
     let mut c = bot.new_user().await;
 
-    a.setup("a").await;
+    a.setup().await;
     a.expect_prompt(Prompt::Quiescent).await;
 
-    b.setup("b").await;
+    b.setup().await;
 
-    c.setup("c").await;
+    c.setup().await;
 
     let id = c.expect_prompt(Prompt::Candidate { id: a.id() }).await;
     c.send_reaction(id, Emoji::ThumbsUp).await;
@@ -172,10 +172,10 @@ fn candidate_interrupt() {
     let mut a = bot.new_user().await;
     let mut b = bot.new_user().await;
 
-    a.setup("a").await;
+    a.setup().await;
     a.expect_prompt(Prompt::Quiescent).await;
 
-    b.setup("b").await;
+    b.setup().await;
 
     let id = b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
     b.send_reaction(id, Emoji::ThumbsUp).await;
@@ -193,10 +193,10 @@ fn match_prompt() {
     let mut a = bot.new_user().await;
     let mut b = bot.new_user().await;
 
-    a.setup("a").await;
+    a.setup().await;
     a.expect_prompt(Prompt::Quiescent).await;
 
-    b.setup("b").await;
+    b.setup().await;
 
     let id = b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
     b.send_reaction(id, Emoji::ThumbsUp).await;
@@ -232,10 +232,10 @@ fn accept_candidate_with_message() {
     let mut a = bot.new_user().await;
     let mut b = bot.new_user().await;
 
-    a.setup("a").await;
+    a.setup().await;
     a.expect_prompt(Prompt::Quiescent).await;
 
-    b.setup("b").await;
+    b.setup().await;
 
     b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
     b.send_message("yes").await;
@@ -271,10 +271,10 @@ fn reject_candidate_with_no() {
     let mut a = bot.new_user().await;
     let mut b = bot.new_user().await;
 
-    a.setup("a").await;
+    a.setup().await;
     a.expect_prompt(Prompt::Quiescent).await;
 
-    b.setup("b").await;
+    b.setup().await;
 
     b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
     b.send_message("no").await;
@@ -293,10 +293,10 @@ fn reject_candidate_with_n() {
     let mut a = bot.new_user().await;
     let mut b = bot.new_user().await;
 
-    a.setup("a").await;
+    a.setup().await;
     a.expect_prompt(Prompt::Quiescent).await;
 
-    b.setup("b").await;
+    b.setup().await;
 
     b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
     b.send_message("n").await;
@@ -315,10 +315,10 @@ fn candidate_hidden_after_rejection() {
     let mut a = bot.new_user().await;
     let mut b = bot.new_user().await;
 
-    a.setup("a").await;
+    a.setup().await;
     a.expect_prompt(Prompt::Quiescent).await;
 
-    b.setup("b").await;
+    b.setup().await;
 
     b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
     b.send_message("yes").await;
@@ -340,20 +340,21 @@ fn foobar() {
     let mut bot = test_bot!().await;
     let mut a = bot.new_user().await;
     let mut b = bot.new_user().await;
+    let mut c = bot.new_user().await;
 
-    a.setup("a").await;
+    a.setup().await;
     a.expect_prompt(Prompt::Quiescent).await;
 
-    b.setup("b").await;
-
+    b.setup().await;
     b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
-    b.send_message("yes").await;
-    b.expect_prompt(Prompt::Quiescent).await;
 
-    a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
-    a.send_message("no").await;
+    c.setup().await;
+    c.expect_prompt(Prompt::Candidate { id: a.id() }).await;
+    c.send_message("yes").await;
+    c.expect_prompt(Prompt::Quiescent).await;
+
+    a.expect_prompt(Prompt::Candidate { id: c.id() }).await;
+    a.send_message("yes").await;
     a.expect_prompt(Prompt::Quiescent).await;
-
-    b.expect_nothing().await;
   })
 }

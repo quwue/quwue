@@ -137,12 +137,12 @@ impl TestUser {
   }
 
   #[cfg(test)]
-  pub(crate) async fn setup(&mut self, name: &str) {
+  pub(crate) async fn setup(&mut self) {
     self.send_message("hi").await;
     let id = self.expect_prompt(Prompt::Welcome).await;
     self.send_reaction(id, Emoji::ThumbsUp).await;
     self.expect_prompt(Prompt::Bio).await;
-    self.send_message(&format!("{}'s bio!", name)).await;
+    self.send_message(&format!("{}'s bio!", self.id)).await;
     self.expect_prompt(Prompt::ProfileImage).await;
     self.send_attachment("image.png", create_test_png()).await;
   }
