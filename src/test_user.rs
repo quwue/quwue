@@ -2,6 +2,17 @@ use crate::common::*;
 
 use crate::test_bot::ErrorReceiver;
 
+#[cfg(test)]
+fn create_test_png() -> Vec<u8> {
+  use image::{DynamicImage, ImageBuffer, ImageOutputFormat, RgbImage};
+  let mut image: RgbImage = ImageBuffer::new(100, 100);
+  image.fill(0xFF);
+  let dynamic = DynamicImage::ImageRgb8(image);
+  let mut dst = Vec::new();
+  dynamic.write_to(&mut dst, ImageOutputFormat::Png).unwrap();
+  dst
+}
+
 #[derive(Debug)]
 pub(crate) struct TestUser {
   bot:             Bot,
@@ -123,5 +134,16 @@ impl TestUser {
 
   pub(crate) fn id(&self) -> UserId {
     self.id.to_discord_user_id()
+  }
+
+  #[cfg(test)]
+  pub(crate) async fn setup(&mut self, name: &str) {
+    self.send_message("hi").await;
+    let id = self.expect_prompt(Prompt::Welcome).await;
+    self.send_reaction(id, Emoji::ThumbsUp).await;
+    self.expect_prompt(Prompt::Bio).await;
+    self.send_message(&format!("{}'s bio!", name)).await;
+    self.expect_prompt(Prompt::ProfileImage).await;
+    self.send_attachment("image.png", create_test_png()).await;
   }
 }
