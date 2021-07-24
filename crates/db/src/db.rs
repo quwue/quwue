@@ -10,7 +10,14 @@ macro_rules! load_user {
     {
       let user = $user;
 
-      let prompt = user.prompt.map(Prompt::load).transpose()?;
+      let prompt = match (user.prompt, user.prompt_payload) {
+        (Some(prompt), prompt_payload) => Some(Prompt::load((prompt, prompt_payload))?),
+        (None, Some(_)) => todo!(),
+        (None, None) => None
+      };
+
+      // user.prompt.map(Prompt::load).transpose()?;
+
       let message_id = user
         .prompt_message_id
         .map(MessageId::load)
@@ -240,7 +247,8 @@ impl Db {
     prompt_message: PromptMessage,
   ) -> Result<()> {
     let discord_id = discord_id.store();
-    let prompt = Some(prompt_message.prompt.store());
+    let (prompt, prompt_payload) = prompt_message.prompt.store();
+    let (prompt, prompt_payload) = (Some(prompt), Some(prompt_payload));
     let prompt_message_id = Some(prompt_message.message_id.store());
 
     sqlx::query!(
@@ -248,9 +256,11 @@ impl Db {
         users
       SET
         prompt = ?,
+        prompt_payload = ?,
         prompt_message_id = ?
       WHERE discord_id = ?",
       prompt,
+      prompt_payload,
       prompt_message_id,
       discord_id
     )
@@ -338,7 +348,7 @@ impl Db {
         .into(),
       Candidate { id } => {
         format!("New potential match:\n{}", Self::bio(tx, id).await?)
-      },
+      }
       Bio => "Please enter a bio to show to other users.".into(),
       ProfileImage => "Please upload a profile photo.".into(),
       Match { id } => format!(
@@ -453,8 +463,8 @@ mod tests {
   use super::*;
 
   struct TestContext {
-    tmpdir:  TempDir,
-    db:      Db,
+    tmpdir: TempDir,
+    db: Db,
     db_path: PathBuf,
   }
 

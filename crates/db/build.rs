@@ -15,8 +15,5 @@ async fn main() {
 
   println!("cargo:rustc-env=DATABASE_URL={}", db_url);
 
-  for result in fs::read_dir("migrations").unwrap() {
-    let entry = result.unwrap();
-    println!("cargo:rerun-if-changed={}", entry.path().display());
-  }
+  println!("cargo:rerun-if-changed=migrations");
 }

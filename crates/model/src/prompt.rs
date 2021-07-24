@@ -3,7 +3,7 @@ use crate::common::*;
 use Emoji::*;
 use Prompt::*;
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub enum Prompt {
   Welcome,
   Quiescent,
