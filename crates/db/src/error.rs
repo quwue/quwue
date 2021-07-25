@@ -7,13 +7,6 @@ pub enum Error {
   Sqlx {
     source: sqlx::Error,
   },
-  PromptLoad {
-    source: serde_json::Error,
-  },
-  PromptMessageLoad {
-    prompt:     Option<Prompt>,
-    message_id: Option<MessageId>,
-  },
   Bool {
     storage: i64,
   },

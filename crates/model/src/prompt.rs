@@ -3,14 +3,15 @@ use crate::common::*;
 use Emoji::*;
 use Prompt::*;
 
+#[repr(u64)]
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub enum Prompt {
-  Welcome,
-  Quiescent,
+  Bio,
   Candidate { id: UserId },
   Match { id: UserId },
-  Bio,
   ProfileImage,
+  Quiescent,
+  Welcome,
 }
 
 impl Prompt {

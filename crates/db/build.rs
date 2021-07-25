@@ -5,6 +5,8 @@ use std::{env, fs, path::Path};
 async fn main() {
   let db_path = Path::new(&env::var_os("OUT_DIR").unwrap()).join("db.sqlite");
 
+  fs::remove_file(&db_path).ok();
+
   let db_url = db_url::db_url(&db_path).unwrap();
 
   Sqlite::create_database(&db_url).await.unwrap();

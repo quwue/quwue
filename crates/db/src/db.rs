@@ -6,34 +6,19 @@ pub struct Db {
 }
 
 macro_rules! load_user {
-  {$user:expr} => {
+  {$user:expr, $prompt:expr} => {
     {
       let user = $user;
+      let prompt = $prompt;
 
-      let prompt = match (user.prompt, user.prompt_payload) {
-        (Some(prompt), prompt_payload) => Some(Prompt::load((prompt, prompt_payload))?),
-        (None, Some(_)) => todo!(),
-        (None, None) => None
-      };
-
-      // user.prompt.map(Prompt::load).transpose()?;
-
-      let message_id = user
-        .prompt_message_id
-        .map(MessageId::load)
-        .transpose()
-        .unwrap_infallible();
-
-      let prompt_message = match (prompt, message_id) {
-        (Some(prompt), Some(message_id)) => Some(PromptMessage {
-          prompt,
-          message_id
-        }),
-        (None, None) => None,
-        (prompt, message_id) => return Err(Error::PromptMessageLoad {
-          prompt,
-          message_id
-        }),
+      let prompt_message = match prompt {
+        Some(row) =>  {
+         Some(PromptMessage {
+           prompt: Prompt::load((row.discriminant, row.payload))?,
+           message_id: MessageId::load(row.message_id).unwrap_infallible()
+         })
+        },
+        None => None
       };
 
       let profile_image_url =  if let Some(text) = user.profile_image_url {
@@ -71,16 +56,21 @@ impl Db {
 
   pub async fn user(&self, discord_id: UserId) -> Result<User> {
     let discord_id = discord_id.store();
+    let mut tx = self.pool.begin().await?;
 
     let row = sqlx::query!("SELECT * FROM users WHERE discord_id = ?", discord_id)
-      .fetch_optional(&self.pool)
+      .fetch_optional(&mut tx)
       .await?;
 
     if let Some(user) = row {
-      return Ok(load_user!(user));
+      let prompt = sqlx::query!(
+        "SELECT * FROM prompts where recipient_discord_id = ?",
+        discord_id,
+      )
+      .fetch_optional(&mut tx)
+      .await?;
+      return Ok(load_user!(user, prompt));
     }
-
-    let mut tx = self.pool.begin().await?;
 
     sqlx::query!(
       "INSERT OR IGNORE INTO users(discord_id) VALUES(?)",
@@ -93,9 +83,16 @@ impl Db {
       .fetch_one(&mut tx)
       .await?;
 
+    let prompt = sqlx::query!(
+      "SELECT * FROM prompts where recipient_discord_id = ?",
+      discord_id,
+    )
+    .fetch_optional(&mut tx)
+    .await?;
+
     tx.commit().await?;
 
-    Ok(load_user!(user))
+    Ok(load_user!(user, prompt))
   }
 
   async fn candidate<'a>(tx: &mut Transaction<'a>, discord_id: UserId) -> Result<Option<UserId>> {
@@ -247,21 +244,17 @@ impl Db {
     prompt_message: PromptMessage,
   ) -> Result<()> {
     let discord_id = discord_id.store();
-    let (prompt, prompt_payload) = prompt_message.prompt.store();
-    let (prompt, prompt_payload) = (Some(prompt), Some(prompt_payload));
-    let prompt_message_id = Some(prompt_message.message_id.store());
+    let (discriminant, payload) = prompt_message.prompt.store();
+    let message_id = prompt_message.message_id.store();
 
     sqlx::query!(
-      "UPDATE
-        users
-      SET
-        prompt = ?,
-        prompt_payload = ?,
-        prompt_message_id = ?
-      WHERE discord_id = ?",
-      prompt,
-      prompt_payload,
-      prompt_message_id,
+      "INSERT OR REPLACE INTO prompts
+        (discriminant, payload, message_id, recipient_discord_id)
+      VALUES
+        (?, ?, ?, ?)",
+      discriminant,
+      payload,
+      message_id,
       discord_id
     )
     .execute(&mut tx)
@@ -348,7 +341,7 @@ impl Db {
         .into(),
       Candidate { id } => {
         format!("New potential match:\n{}", Self::bio(tx, id).await?)
-      }
+      },
       Bio => "Please enter a bio to show to other users.".into(),
       ProfileImage => "Please upload a profile photo.".into(),
       Match { id } => format!(
@@ -463,8 +456,8 @@ mod tests {
   use super::*;
 
   struct TestContext {
-    tmpdir: TempDir,
-    db: Db,
+    tmpdir:  TempDir,
+    db:      Db,
     db_path: PathBuf,
   }
 

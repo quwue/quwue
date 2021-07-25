@@ -425,7 +425,6 @@ dependencies = [
  "guard",
  "model",
  "num_enum",
- "serde_json",
  "snafu",
  "sqlx",
  "tempfile",
@@ -1068,7 +1067,6 @@ name = "model"
 version = "0.0.0"
 dependencies = [
  "num_enum",
- "serde",
  "strum",
  "twilight-http",
  "twilight-model",

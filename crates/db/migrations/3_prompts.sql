@@ -1,8 +1,8 @@
-CREATE TABLE IF NOT EXISTS prompt (
+CREATE TABLE IF NOT EXISTS prompts (
   id                   INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-  prompt_discriminant  INTEGER NOT NULL,
-  prompt_message_id    INTEGER NOT NULL,
-  prompt_payload       INTEGER,
-  recipient_discord_id INTEGER NOT NULL,
+  discriminant         INTEGER NOT NULL,
+  message_id           INTEGER NOT NULL,
+  payload              INTEGER,
+  recipient_discord_id INTEGER NOT NULL UNIQUE,
   FOREIGN KEY (recipient_discord_id) references users(discord_id)
 );

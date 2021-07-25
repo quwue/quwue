@@ -27,15 +27,30 @@ impl Value for Prompt {
   type Storage = (i64, Option<i64>);
 
   fn store(self) -> Self::Storage {
-    // let n: u64 = self.into();
-    // i64::from_le_bytes(n.to_le_bytes())
-    todo!()
+    match self {
+      Self::Bio => (0, None),
+      Self::Candidate { id } => (1, Some(id.store())),
+      Self::Match { id } => (2, Some(id.store())),
+      Self::ProfileImage => (3, None),
+      Self::Quiescent => (4, None),
+      Self::Welcome => (5, None),
+    }
   }
 
   fn load(storage: Self::Storage) -> Result<Self, Self::Err> {
-    // let value = u64::from_le_bytes(storage.to_le_bytes());
-    // Self::try_from(value).context(error::PromptLoad)
-    todo!()
+    Ok(match storage {
+      (0, None) => Self::Bio,
+      (1, Some(id)) => Self::Candidate {
+        id: UserId::load(id).unwrap_infallible(),
+      },
+      (2, Some(id)) => Self::Match {
+        id: UserId::load(id).unwrap_infallible(),
+      },
+      (3, None) => Self::ProfileImage,
+      (4, None) => Self::Quiescent,
+      (5, None) => Self::Welcome,
+      _ => todo!(),
+    })
   }
 }
 
