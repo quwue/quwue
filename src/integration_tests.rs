@@ -210,7 +210,7 @@ fn match_prompt() {
       .db()
       .prompt_text_outside_update_transaction(prompt)
       .await
-      .contains("b's bio!"));
+      .contains("1's bio!"));
     a.expect_prompt(prompt).await;
 
     let prompt = Prompt::Match { id: a.id() };
@@ -218,7 +218,7 @@ fn match_prompt() {
       .db()
       .prompt_text_outside_update_transaction(prompt)
       .await
-      .contains("a's bio!"));
+      .contains("0's bio!"));
     b.expect_prompt(prompt).await;
   })
 }
@@ -249,7 +249,7 @@ fn accept_candidate_with_message() {
       .db()
       .prompt_text_outside_update_transaction(prompt)
       .await
-      .contains("b's bio!"));
+      .contains("1's bio!"));
     a.expect_prompt(prompt).await;
 
     let prompt = Prompt::Match { id: a.id() };
@@ -257,7 +257,7 @@ fn accept_candidate_with_message() {
       .db()
       .prompt_text_outside_update_transaction(prompt)
       .await
-      .contains("a's bio!"));
+      .contains("0's bio!"));
     b.expect_prompt(prompt).await;
   })
 }
@@ -329,32 +329,5 @@ fn candidate_hidden_after_rejection() {
     a.expect_prompt(Prompt::Quiescent).await;
 
     b.expect_nothing().await;
-  })
-}
-
-#[instrument]
-#[test]
-#[ignore]
-fn foobar() {
-  test(async {
-    let mut bot = test_bot!().await;
-    let mut a = bot.new_user().await;
-    let mut b = bot.new_user().await;
-    let mut c = bot.new_user().await;
-
-    a.setup().await;
-    a.expect_prompt(Prompt::Quiescent).await;
-
-    b.setup().await;
-    b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
-
-    c.setup().await;
-    c.expect_prompt(Prompt::Candidate { id: a.id() }).await;
-    c.send_message("yes").await;
-    c.expect_prompt(Prompt::Quiescent).await;
-
-    a.expect_prompt(Prompt::Candidate { id: c.id() }).await;
-    a.send_message("yes").await;
-    a.expect_prompt(Prompt::Quiescent).await;
   })
 }

@@ -72,12 +72,9 @@ impl Db {
     {
       let discord_id = discord_id.store();
 
-      sqlx::query!(
-        "INSERT OR IGNORE INTO users(discord_id) VALUES(?)",
-        discord_id,
-      )
-      .execute(&mut tx)
-      .await?;
+      sqlx::query!("INSERT INTO users(discord_id) VALUES(?)", discord_id)
+        .execute(&mut tx)
+        .await?;
     };
 
     let user = Self::load_user(&mut tx, discord_id)

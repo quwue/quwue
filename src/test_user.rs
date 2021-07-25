@@ -142,7 +142,9 @@ impl TestUser {
     let id = self.expect_prompt(Prompt::Welcome).await;
     self.send_reaction(id, Emoji::ThumbsUp).await;
     self.expect_prompt(Prompt::Bio).await;
-    self.send_message(&format!("{}'s bio!", self.id)).await;
+    self
+      .send_message(&format!("{}'s bio!", self.id.number()))
+      .await;
     self.expect_prompt(Prompt::ProfileImage).await;
     self.send_attachment("image.png", create_test_png()).await;
   }
