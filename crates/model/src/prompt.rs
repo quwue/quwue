@@ -3,7 +3,6 @@ use crate::common::*;
 use Emoji::*;
 use Prompt::*;
 
-#[repr(u64)]
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub enum Prompt {
   Bio,
