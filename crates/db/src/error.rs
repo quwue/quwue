@@ -23,6 +23,9 @@ pub enum Error {
   PathUnicodeDecode {
     path: PathBuf,
   },
+  Internal {
+    message: String,
+  },
 }
 
 impl From<sqlx::migrate::MigrateError> for Error {

@@ -5,40 +5,6 @@ pub struct Db {
   pool: SqlitePool,
 }
 
-macro_rules! load_user {
-  {$user:expr, $prompt:expr} => {
-    {
-      let user = $user;
-      let prompt = $prompt;
-
-      let prompt_message = match prompt {
-        Some(row) =>  {
-         Some(PromptMessage {
-           prompt: Prompt::load((row.discriminant, row.payload))?,
-           message_id: MessageId::load(row.message_id).unwrap_infallible()
-         })
-        },
-        None => None
-      };
-
-      let profile_image_url =  if let Some(text) = user.profile_image_url {
-        Some(text.parse().context(error::UrlLoad { text })?)
-      } else {
-        None
-      };
-
-      User {
-        id:             u64::load(user.id).unwrap_infallible(),
-        discord_id:     UserId::load(user.discord_id).unwrap_infallible(),
-        welcomed:       user.welcomed,
-        bio:            user.bio,
-        profile_image_url,
-        prompt_message,
-      }
-    }
-  }
-}
-
 impl Db {
   pub async fn connect(path: &Path) -> Result<Self> {
     let url = db_url::db_url(path).ok_or_else(|| Error::PathUnicodeDecode {
@@ -54,12 +20,11 @@ impl Db {
     Ok(Self { pool })
   }
 
-  pub async fn user(&self, discord_id: UserId) -> Result<User> {
+  async fn load_user<'a>(tx: &mut Transaction<'a>, discord_id: UserId) -> Result<Option<User>> {
     let discord_id = discord_id.store();
-    let mut tx = self.pool.begin().await?;
 
     let row = sqlx::query!("SELECT * FROM users WHERE discord_id = ?", discord_id)
-      .fetch_optional(&mut tx)
+      .fetch_optional(&mut *tx)
       .await?;
 
     if let Some(user) = row {
@@ -67,32 +32,63 @@ impl Db {
         "SELECT * FROM prompts where recipient_discord_id = ?",
         discord_id,
       )
-      .fetch_optional(&mut tx)
+      .fetch_optional(tx)
       .await?;
-      return Ok(load_user!(user, prompt));
+
+      let prompt_message = match prompt {
+        Some(row) => Some(PromptMessage {
+          prompt:     Prompt::load((row.discriminant, row.payload))?,
+          message_id: MessageId::load(row.message_id).unwrap_infallible(),
+        }),
+        None => None,
+      };
+
+      let profile_image_url = if let Some(text) = user.profile_image_url {
+        Some(text.parse().context(error::UrlLoad { text })?)
+      } else {
+        None
+      };
+
+      return Ok(Some(User {
+        id: u64::load(user.id).unwrap_infallible(),
+        discord_id: UserId::load(user.discord_id).unwrap_infallible(),
+        welcomed: user.welcomed,
+        bio: user.bio,
+        profile_image_url,
+        prompt_message,
+      }));
     }
 
-    sqlx::query!(
-      "INSERT OR IGNORE INTO users(discord_id) VALUES(?)",
-      discord_id,
-    )
-    .execute(&mut tx)
-    .await?;
+    Ok(None)
+  }
 
-    let user = sqlx::query!("SELECT * FROM users WHERE discord_id = ?", discord_id)
-      .fetch_one(&mut tx)
+  pub async fn user(&self, discord_id: UserId) -> Result<User> {
+    let mut tx = self.pool.begin().await?;
+
+    if let Some(user) = Self::load_user(&mut tx, discord_id).await? {
+      return Ok(user);
+    }
+
+    {
+      let discord_id = discord_id.store();
+
+      sqlx::query!(
+        "INSERT OR IGNORE INTO users(discord_id) VALUES(?)",
+        discord_id,
+      )
+      .execute(&mut tx)
       .await?;
+    };
 
-    let prompt = sqlx::query!(
-      "SELECT * FROM prompts where recipient_discord_id = ?",
-      discord_id,
-    )
-    .fetch_optional(&mut tx)
-    .await?;
+    let user = Self::load_user(&mut tx, discord_id)
+      .await?
+      .ok_or_else(|| Error::Internal {
+        message: "Load user returned None after insertion.".to_owned(),
+      })?;
 
     tx.commit().await?;
 
-    Ok(load_user!(user, prompt))
+    Ok(user)
   }
 
   async fn candidate<'a>(tx: &mut Transaction<'a>, discord_id: UserId) -> Result<Option<UserId>> {
