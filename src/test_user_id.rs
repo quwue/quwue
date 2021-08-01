@@ -14,6 +14,11 @@ impl TestUserId {
   pub(crate) fn to_discord_user_id(&self) -> UserId {
     UserId(self.user)
   }
+
+  #[cfg(test)]
+  pub(crate) fn number(&self) -> u64 {
+    self.user
+  }
 }
 
 impl Display for TestUserId {

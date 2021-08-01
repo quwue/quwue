@@ -1,6 +1,11 @@
 pub use crate::{
-  action::Action, emoji::Emoji, prompt::Prompt, prompt_message::PromptMessage, response::Response,
-  update::Update, user::User,
+  action::Action,
+  emoji::Emoji,
+  prompt::{Prompt, PromptDiscriminant},
+  prompt_message::PromptMessage,
+  response::Response,
+  update::Update,
+  user::User,
 };
 
 mod action;

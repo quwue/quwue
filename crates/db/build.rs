@@ -5,6 +5,8 @@ use std::{env, fs, path::Path};
 async fn main() {
   let db_path = Path::new(&env::var_os("OUT_DIR").unwrap()).join("db.sqlite");
 
+  fs::remove_file(&db_path).ok();
+
   let db_url = db_url::db_url(&db_path).unwrap();
 
   Sqlite::create_database(&db_url).await.unwrap();
@@ -15,8 +17,5 @@ async fn main() {
 
   println!("cargo:rustc-env=DATABASE_URL={}", db_url);
 
-  for result in fs::read_dir("migrations").unwrap() {
-    let entry = result.unwrap();
-    println!("cargo:rerun-if-changed={}", entry.path().display());
-  }
+  println!("cargo:rerun-if-changed=migrations");
 }

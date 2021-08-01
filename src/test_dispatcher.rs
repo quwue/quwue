@@ -73,7 +73,7 @@ impl TestDispatcher {
               panic!("Unexpected custom reaction: {:?}", reaction.emoji)
             },
             ReactionType::Unicode { name } =>
-              if let Some(emoji) = Emoji::from_chars(&name) {
+              if let Some(emoji) = Emoji::from_chars(name) {
                 emoji
               } else {
                 panic!("Unrecognized reaction: {}", name);

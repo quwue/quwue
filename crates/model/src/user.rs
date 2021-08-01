@@ -16,8 +16,8 @@ impl User {
       prompt_message.prompt
     } else {
       return Update {
-        prompt: Prompt::Welcome,
-        action: None,
+        next_prompt: Prompt::Welcome,
+        action:      None,
       };
     };
 
@@ -32,14 +32,14 @@ impl User {
       action
     } else {
       return Update {
-        action: None,
-        prompt,
+        action:      None,
+        next_prompt: prompt,
       };
     };
 
     Update {
-      prompt: self.next_prompt(&action),
-      action: Some(action),
+      next_prompt: self.next_prompt(&action),
+      action:      Some(action),
     }
   }
 

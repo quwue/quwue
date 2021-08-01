@@ -24,14 +24,57 @@ impl Value for u64 {
 
 impl Value for Prompt {
   type Err = Error;
-  type Storage = String;
+  type Storage = (i64, Option<i64>);
 
   fn store(self) -> Self::Storage {
-    serde_json::to_string(&self).expect("Prompt serialization failed.")
+    let payload = match self {
+      Self::Bio | Self::ProfileImage | Self::Quiescent | Self::Welcome => None,
+      Self::Candidate { id } | Self::Match { id } => Some(id.store()),
+    };
+
+    ((self.discriminant() as u64).store(), payload)
   }
 
+  fn load((discriminant, payload): Self::Storage) -> Result<Self, Self::Err> {
+    use PromptDiscriminant::*;
+
+    let discriminant = PromptDiscriminant::load(discriminant)?;
+
+    match (discriminant, payload) {
+      (Bio, None) => Ok(Self::Bio),
+      (Candidate, Some(id)) => Ok(Self::Candidate {
+        id: UserId::load(id).unwrap_infallible(),
+      }),
+      (Match, Some(id)) => Ok(Self::Match {
+        id: UserId::load(id).unwrap_infallible(),
+      }),
+      (ProfileImage, None) => Ok(Self::ProfileImage),
+      (Quiescent, None) => Ok(Self::Quiescent),
+      (Welcome, None) => Ok(Self::Welcome),
+      (Bio | ProfileImage | Quiescent | Welcome, Some(payload)) =>
+        Err(Error::PromptLoadSuperfluousPayload {
+          discriminant,
+          payload,
+        }),
+      (Candidate | Match, None) => Err(Error::PromptLoadMissingPayload { discriminant }),
+    }
+  }
+}
+
+impl Value for PromptDiscriminant {
+  type Err = Error;
+  type Storage = i64;
+
   fn load(storage: Self::Storage) -> Result<Self, Self::Err> {
-    serde_json::from_str(&storage).context(error::PromptLoad)
+    let discriminant = u64::load(storage).unwrap_infallible();
+
+    discriminant
+      .try_into()
+      .context(error::PromptLoadBadDiscriminant { discriminant })
+  }
+
+  fn store(self) -> Self::Storage {
+    (self as u64).store()
   }
 }
 

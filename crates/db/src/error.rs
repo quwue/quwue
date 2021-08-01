@@ -3,19 +3,29 @@ use crate::common::*;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum Error {
+  Bool {
+    storage: i64,
+  },
+  Internal {
+    message: String,
+  },
+  PathUnicodeDecode {
+    path: PathBuf,
+  },
+  PromptLoadBadDiscriminant {
+    discriminant: u64,
+    source:       TryFromPrimitiveError<PromptDiscriminant>,
+  },
+  PromptLoadMissingPayload {
+    discriminant: PromptDiscriminant,
+  },
+  PromptLoadSuperfluousPayload {
+    discriminant: PromptDiscriminant,
+    payload:      i64,
+  },
   #[snafu(context(false), display("Database error: {}", source))]
   Sqlx {
     source: sqlx::Error,
-  },
-  PromptLoad {
-    source: serde_json::Error,
-  },
-  PromptMessageLoad {
-    prompt:     Option<Prompt>,
-    message_id: Option<MessageId>,
-  },
-  Bool {
-    storage: i64,
   },
   UrlLoad {
     source: url::ParseError,
@@ -26,9 +36,6 @@ pub enum Error {
   },
   UserUnknown {
     id: UserId,
-  },
-  PathUnicodeDecode {
-    path: PathBuf,
   },
 }
 

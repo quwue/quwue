@@ -5,7 +5,7 @@ export EDITOR := 'vim'
 export RUST_BACKTRACE := bt
 export RUST_LOG := log
 
-watch *args='check --all --tests':
+watch *args='lcheck --all --tests':
 	cargo watch --clear --exec '{{args}}'
 
 test *args:
