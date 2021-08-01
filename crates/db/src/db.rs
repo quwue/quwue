@@ -100,7 +100,7 @@ impl Db {
       "SELECT
         discord_id
       FROM
-        users
+        users AS potential_candidate
       WHERE
         welcomed == TRUE
         AND
@@ -112,18 +112,18 @@ impl Db {
         AND
         NOT EXISTS (
           SELECT * FROM responses
-          WHERE discord_id == ? AND candidate_id == users.discord_id
+          WHERE discord_id == ? AND candidate_id == potential_candidate.discord_id
         )
         AND
         NOT EXISTS (
           SELECT * FROM responses
-          WHERE discord_id == users.discord_id AND candidate_id == ? AND NOT response
+          WHERE discord_id == potential_candidate.discord_id AND candidate_id == ? AND NOT response
         )
         AND
         EXISTS (
           SELECT * FROM prompts
           WHERE
-            recipient_discord_id = users.discord_id AND discriminant == ?
+            recipient_discord_id = potential_candidate.discord_id AND discriminant == ?
         )
       LIMIT 1",
       discord_id,
