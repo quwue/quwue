@@ -23,6 +23,17 @@ pub enum Error {
   PathUnicodeDecode {
     path: PathBuf,
   },
+  PromptLoadBadDiscriminant {
+    discriminant: u64,
+    source:       TryFromPrimitiveError<PromptDiscriminant>,
+  },
+  PromptLoadMissingPayload {
+    discriminant: PromptDiscriminant,
+  },
+  PromptLoadSuperfluousPayload {
+    discriminant: PromptDiscriminant,
+    payload:      i64,
+  },
   Internal {
     message: String,
   },

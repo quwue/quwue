@@ -27,30 +27,45 @@ impl Value for Prompt {
   type Storage = (i64, Option<i64>);
 
   fn store(self) -> Self::Storage {
-    match self {
-      Self::Bio => (0, None),
-      Self::Candidate { id } => (1, Some(id.store())),
-      Self::Match { id } => (2, Some(id.store())),
-      Self::ProfileImage => (3, None),
-      Self::Quiescent => (4, None),
-      Self::Welcome => (5, None),
-    }
+    let payload = match self {
+      Self::Bio => None,
+      Self::Candidate { id } => Some(id.store()),
+      Self::Match { id } => Some(id.store()),
+      Self::ProfileImage => None,
+      Self::Quiescent => None,
+      Self::Welcome => None,
+    };
+
+    ((self.discriminant() as u64).store(), payload)
   }
 
-  fn load(storage: Self::Storage) -> Result<Self, Self::Err> {
-    Ok(match storage {
-      (0, None) => Self::Bio,
-      (1, Some(id)) => Self::Candidate {
+  fn load((discriminant, payload): Self::Storage) -> Result<Self, Self::Err> {
+    use PromptDiscriminant::*;
+
+    let discriminant = u64::load(discriminant).unwrap_infallible();
+
+    let discriminant: PromptDiscriminant = discriminant
+      .try_into()
+      .context(error::PromptLoadBadDiscriminant { discriminant })?;
+
+    match (discriminant, payload) {
+      (Bio, None) => Ok(Self::Bio),
+      (Candidate, Some(id)) => Ok(Self::Candidate {
         id: UserId::load(id).unwrap_infallible(),
-      },
-      (2, Some(id)) => Self::Match {
+      }),
+      (Match, Some(id)) => Ok(Self::Match {
         id: UserId::load(id).unwrap_infallible(),
-      },
-      (3, None) => Self::ProfileImage,
-      (4, None) => Self::Quiescent,
-      (5, None) => Self::Welcome,
-      _ => todo!(),
-    })
+      }),
+      (ProfileImage, None) => Ok(Self::ProfileImage),
+      (Quiescent, None) => Ok(Self::Quiescent),
+      (Welcome, None) => Ok(Self::Welcome),
+      (Bio | ProfileImage | Quiescent | Welcome, Some(payload)) =>
+        Err(Error::PromptLoadSuperfluousPayload {
+          discriminant,
+          payload,
+        }),
+      (Candidate | Match, None) => Err(Error::PromptLoadMissingPayload { discriminant }),
+    }
   }
 }
 

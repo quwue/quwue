@@ -3,7 +3,8 @@ use crate::common::*;
 use Emoji::*;
 use Prompt::*;
 
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+#[derive(Debug, EnumDiscriminants, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+#[strum_discriminants(repr(u64), derive(TryFromPrimitive), name(PromptDiscriminant))]
 pub enum Prompt {
   Bio,
   Candidate { id: UserId },
@@ -24,5 +25,9 @@ impl Prompt {
 
   pub fn quiescent(self) -> bool {
     self == Quiescent
+  }
+
+  pub fn discriminant(self) -> PromptDiscriminant {
+    self.into()
   }
 }
