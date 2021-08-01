@@ -182,18 +182,18 @@ impl Db {
       }
     }
 
-    let mut prompt = update.prompt;
+    let mut next_prompt = update.next_prompt;
 
-    if prompt.quiescent() {
+    if next_prompt.quiescent() {
       if let Some(id) = Self::get_match(&mut tx, user_id).await? {
-        prompt = Prompt::Match { id };
+        next_prompt = Prompt::Match { id };
       } else if let Some(id) = Self::get_candidate(&mut tx, user_id).await? {
-        prompt = Prompt::Candidate { id };
+        next_prompt = Prompt::Candidate { id };
       }
     };
 
     let update_tx = UpdateTx {
-      prompt,
+      prompt: next_prompt,
       tx,
       user_id,
     };
@@ -406,8 +406,8 @@ impl Db {
     self.user(id).await.unwrap();
 
     let update = Update {
-      action: Some(Action::Welcome),
-      prompt: Prompt::Bio,
+      action:      Some(Action::Welcome),
+      next_prompt: Prompt::Bio,
     };
 
     let tx = self.prepare(id, &update).await.unwrap();
@@ -415,10 +415,10 @@ impl Db {
     tx.commit(MessageId(200)).await.unwrap();
 
     let update = Update {
-      action: Some(Action::SetBio {
+      action:      Some(Action::SetBio {
         text: format!("User {}'s bio!", id),
       }),
-      prompt: Prompt::ProfileImage,
+      next_prompt: Prompt::ProfileImage,
     };
 
     let tx = self.prepare(id, &update).await.unwrap();
@@ -426,12 +426,12 @@ impl Db {
     tx.commit(MessageId(200)).await.unwrap();
 
     let update = Update {
-      action: Some(Action::SetProfileImage {
+      action:      Some(Action::SetProfileImage {
         url: format!("https://foo.example/user-{}.png", id)
           .parse()
           .unwrap(),
       }),
-      prompt: Prompt::Quiescent,
+      next_prompt: Prompt::Quiescent,
     };
 
     let tx = self.prepare(id, &update).await.unwrap();
@@ -555,8 +555,8 @@ mod tests {
     };
 
     let update = Update {
-      action: Some(Action::Welcome),
-      prompt: Prompt::Welcome,
+      action:      Some(Action::Welcome),
+      next_prompt: Prompt::Welcome,
     };
 
     let tx = context.db.prepare(have.discord_id, &update).await.unwrap();
@@ -599,10 +599,10 @@ mod tests {
     };
 
     let update = Update {
-      action: Some(Action::SetBio {
+      action:      Some(Action::SetBio {
         text: "bio!".to_owned(),
       }),
-      prompt: Prompt::Bio,
+      next_prompt: Prompt::Bio,
     };
 
     let tx = context.db.prepare(have.discord_id, &update).await.unwrap();
@@ -645,10 +645,10 @@ mod tests {
     };
 
     let update = Update {
-      action: Some(Action::SetProfileImage {
+      action:      Some(Action::SetProfileImage {
         url: "https://www.google.com".parse().unwrap(),
       }),
-      prompt: Prompt::ProfileImage,
+      next_prompt: Prompt::ProfileImage,
     };
 
     let tx = context.db.prepare(have.discord_id, &update).await.unwrap();
@@ -696,8 +696,8 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
-      prompt: Prompt::Quiescent,
+      action:      Some(Action::AcceptCandidate { id: a }),
+      next_prompt: Prompt::Quiescent,
     };
 
     let tx = context.db.prepare(b, &update).await.unwrap();
@@ -719,8 +719,8 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::RejectCandidate { id: a }),
-      prompt: Prompt::Quiescent,
+      action:      Some(Action::RejectCandidate { id: a }),
+      next_prompt: Prompt::Quiescent,
     };
 
     let tx = context.db.prepare(b, &update).await.unwrap();
@@ -742,8 +742,8 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::RejectCandidate { id: a }),
-      prompt: Prompt::Quiescent,
+      action:      Some(Action::RejectCandidate { id: a }),
+      next_prompt: Prompt::Quiescent,
     };
 
     let tx = context.db.prepare(b, &update).await.unwrap();
@@ -753,8 +753,8 @@ mod tests {
     tx.commit(MessageId(201)).await.unwrap();
 
     let update = Update {
-      action: None,
-      prompt: Prompt::Quiescent,
+      action:      None,
+      next_prompt: Prompt::Quiescent,
     };
 
     let tx = context.db.prepare(a, &update).await.unwrap();
@@ -776,8 +776,8 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
-      prompt: Prompt::Quiescent,
+      action:      Some(Action::AcceptCandidate { id: a }),
+      next_prompt: Prompt::Quiescent,
     };
 
     let tx = context.db.prepare(b, &update).await.unwrap();
@@ -787,8 +787,8 @@ mod tests {
     tx.commit(MessageId(201)).await.unwrap();
 
     let update = Update {
-      action: None,
-      prompt: Prompt::Quiescent,
+      action:      None,
+      next_prompt: Prompt::Quiescent,
     };
 
     let tx = context.db.prepare(a, &update).await.unwrap();
@@ -810,8 +810,8 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
-      prompt: Prompt::Quiescent,
+      action:      Some(Action::AcceptCandidate { id: a }),
+      next_prompt: Prompt::Quiescent,
     };
 
     let tx = context.db.prepare(b, &update).await.unwrap();
@@ -823,8 +823,8 @@ mod tests {
     assert!(context.db.response(b, a).await);
 
     let update = Update {
-      action: Some(Action::RejectCandidate { id: a }),
-      prompt: Prompt::Quiescent,
+      action:      Some(Action::RejectCandidate { id: a }),
+      next_prompt: Prompt::Quiescent,
     };
 
     let tx = context.db.prepare(b, &update).await.unwrap();
@@ -850,8 +850,8 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
-      prompt: Prompt::Quiescent,
+      action:      Some(Action::AcceptCandidate { id: a }),
+      next_prompt: Prompt::Quiescent,
     };
 
     let tx = context.db.prepare(b, &update).await.unwrap();
@@ -861,8 +861,8 @@ mod tests {
     tx.commit(MessageId(201)).await.unwrap();
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: b }),
-      prompt: Prompt::Quiescent,
+      action:      Some(Action::AcceptCandidate { id: b }),
+      next_prompt: Prompt::Quiescent,
     };
 
     let tx = context.db.prepare(a, &update).await.unwrap();
