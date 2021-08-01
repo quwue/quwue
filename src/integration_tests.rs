@@ -150,9 +150,10 @@ fn multi_user_candidate_accept() {
     a.expect_prompt(Prompt::Quiescent).await;
 
     b.setup().await;
+    let id = b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
+    b.send_reaction(id, Emoji::ThumbsDown).await;
 
     c.setup().await;
-
     let id = c.expect_prompt(Prompt::Candidate { id: a.id() }).await;
     c.send_reaction(id, Emoji::ThumbsUp).await;
 
@@ -210,7 +211,7 @@ fn match_prompt() {
       .db()
       .prompt_text_outside_update_transaction(prompt)
       .await
-      .contains("1's bio!"));
+      .contains("b's bio!"));
     a.expect_prompt(prompt).await;
 
     let prompt = Prompt::Match { id: a.id() };
@@ -218,7 +219,7 @@ fn match_prompt() {
       .db()
       .prompt_text_outside_update_transaction(prompt)
       .await
-      .contains("0's bio!"));
+      .contains("a's bio!"));
     b.expect_prompt(prompt).await;
   })
 }
@@ -249,7 +250,7 @@ fn accept_candidate_with_message() {
       .db()
       .prompt_text_outside_update_transaction(prompt)
       .await
-      .contains("1's bio!"));
+      .contains("b's bio!"));
     a.expect_prompt(prompt).await;
 
     let prompt = Prompt::Match { id: a.id() };
@@ -257,7 +258,7 @@ fn accept_candidate_with_message() {
       .db()
       .prompt_text_outside_update_transaction(prompt)
       .await
-      .contains("0's bio!"));
+      .contains("a's bio!"));
     b.expect_prompt(prompt).await;
   })
 }
@@ -283,6 +284,16 @@ fn reject_candidate_with_no() {
     a.expect_nothing().await;
   })
 }
+
+// TODO:
+// - multi_user_message
+// - multi_user_react
+// - reject_candidate_with_n
+// - reject_candidate_with_no
+// - welcome_bad_message
+// - welcome_confirm_message
+// - welcome_confirm_react
+// - welcome_initial_response
 
 #[instrument]
 #[test]
