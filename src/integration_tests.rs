@@ -338,7 +338,7 @@ fn candidate_hidden_after_rejection() {
 #[instrument]
 #[test]
 #[ignore]
-fn foobar() {
+fn dont_show_users_as_candidates_when_they_have_pending_candidate_prompts() {
   test(async {
     let mut bot = test_bot!().await;
     let mut a = bot.new_user().await;
@@ -358,6 +358,8 @@ fn foobar() {
 
     a.expect_prompt(Prompt::Candidate { id: c.id() }).await;
     a.send_message("yes").await;
-    a.expect_prompt(Prompt::Quiescent).await;
+    a.expect_prompt(Prompt::Match { id: c.id() }).await;
+
+    c.expect_prompt(Prompt::Match { id: a.id() }).await;
   })
 }
