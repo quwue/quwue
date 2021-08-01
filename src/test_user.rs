@@ -137,14 +137,22 @@ impl TestUser {
   }
 
   #[cfg(test)]
+  pub(crate) fn name(&self) -> String {
+    "abcdefghijklmnopqrstuvwxyz"
+      .chars()
+      .skip(self.id.number() as usize)
+      .next()
+      .map(|char| char.to_string())
+      .unwrap_or_else(|| self.id.number().to_string())
+  }
+
+  #[cfg(test)]
   pub(crate) async fn setup(&mut self) {
     self.send_message("hi").await;
     let id = self.expect_prompt(Prompt::Welcome).await;
     self.send_reaction(id, Emoji::ThumbsUp).await;
     self.expect_prompt(Prompt::Bio).await;
-    self
-      .send_message(&format!("{}'s bio!", self.id.number()))
-      .await;
+    self.send_message(&format!("{}'s bio!", self.name())).await;
     self.expect_prompt(Prompt::ProfileImage).await;
     self.send_attachment("image.png", create_test_png()).await;
   }
