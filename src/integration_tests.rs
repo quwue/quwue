@@ -285,16 +285,6 @@ fn reject_candidate_with_no() {
   })
 }
 
-// TODO:
-// - multi_user_message
-// - multi_user_react
-// - reject_candidate_with_n
-// - reject_candidate_with_no
-// - welcome_bad_message
-// - welcome_confirm_message
-// - welcome_confirm_react
-// - welcome_initial_response
-
 #[instrument]
 #[test]
 #[ignore]
