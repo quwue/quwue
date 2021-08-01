@@ -175,8 +175,8 @@ impl Db {
       use Action::*;
       match action {
         Welcome => Self::welcome(&mut tx, user_id).await?,
-        SetBio { text } => Self::set_bio(&mut tx, user_id, &text).await?,
-        SetProfileImage { url } => Self::set_profile_image(&mut tx, user_id, &url).await?,
+        SetBio { text } => Self::set_bio(&mut tx, user_id, text).await?,
+        SetProfileImage { url } => Self::set_profile_image(&mut tx, user_id, url).await?,
         AcceptCandidate { id } => Self::respond_to_candidate(&mut tx, user_id, *id, true).await?,
         RejectCandidate { id } => Self::respond_to_candidate(&mut tx, user_id, *id, false).await?,
       }

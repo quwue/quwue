@@ -28,12 +28,8 @@ impl Value for Prompt {
 
   fn store(self) -> Self::Storage {
     let payload = match self {
-      Self::Bio => None,
-      Self::Candidate { id } => Some(id.store()),
-      Self::Match { id } => Some(id.store()),
-      Self::ProfileImage => None,
-      Self::Quiescent => None,
-      Self::Welcome => None,
+      Self::Bio | Self::ProfileImage | Self::Quiescent | Self::Welcome => None,
+      Self::Candidate { id } | Self::Match { id } => Some(id.store()),
     };
 
     ((self.discriminant() as u64).store(), payload)

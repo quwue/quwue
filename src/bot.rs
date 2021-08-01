@@ -313,7 +313,7 @@ impl Bot {
 
     match channel {
       Some(Channel::Private(_)) => true,
-      Some(Channel::Group(_)) | Some(Channel::Guild(_)) | None => false,
+      Some(Channel::Group(_) | Channel::Guild(_)) | None => false,
     }
   }
 

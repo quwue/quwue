@@ -3,8 +3,6 @@ use std::{env, fs, path::Path};
 
 #[tokio::main]
 async fn main() {
-  #![allow(clippy::semicolon_if_nothing_returned)]
-
   let db_path = Path::new(&env::var_os("OUT_DIR").unwrap()).join("db.sqlite");
 
   fs::remove_file(&db_path).ok();

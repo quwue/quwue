@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Deny `clippy::semicolon_if_nothing_returned` once
+# https://github.com/rust-lang/rust-clippy/pull/7268
+# is fixed.
+
 set -euo pipefail
 
 cargo clippy --all --all-targets --all-features -- \
@@ -12,4 +16,5 @@ cargo clippy --all --all-targets --all-features -- \
   --allow clippy::needless-lifetimes               \
   --allow clippy::non-ascii-literal                \
   --allow clippy::option-if-let-else               \
+  --allow clippy::semicolon_if_nothing_returned    \
   --allow clippy::wildcard-imports

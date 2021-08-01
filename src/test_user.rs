@@ -138,12 +138,13 @@ impl TestUser {
 
   #[cfg(test)]
   pub(crate) fn name(&self) -> String {
+    #[allow(clippy::cast_possible_truncation)]
+    let n = self.id.number() as usize;
+
     "abcdefghijklmnopqrstuvwxyz"
       .chars()
-      .skip(self.id.number() as usize)
-      .next()
-      .map(|char| char.to_string())
-      .unwrap_or_else(|| self.id.number().to_string())
+      .nth(n)
+      .map_or_else(|| self.id.number().to_string(), |char| char.to_string())
   }
 
   #[cfg(test)]

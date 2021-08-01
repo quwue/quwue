@@ -15,6 +15,7 @@ impl TestUserId {
     UserId(self.user)
   }
 
+  #[cfg(test)]
   pub(crate) fn number(&self) -> u64 {
     self.user
   }
