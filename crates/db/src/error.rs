@@ -3,22 +3,11 @@ use crate::common::*;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum Error {
-  #[snafu(context(false), display("Database error: {}", source))]
-  Sqlx {
-    source: sqlx::Error,
-  },
   Bool {
     storage: i64,
   },
-  UrlLoad {
-    source: url::ParseError,
-    text:   String,
-  },
-  UserMissingBio {
-    id: UserId,
-  },
-  UserUnknown {
-    id: UserId,
+  Internal {
+    message: String,
   },
   PathUnicodeDecode {
     path: PathBuf,
@@ -34,8 +23,19 @@ pub enum Error {
     discriminant: PromptDiscriminant,
     payload:      i64,
   },
-  Internal {
-    message: String,
+  #[snafu(context(false), display("Database error: {}", source))]
+  Sqlx {
+    source: sqlx::Error,
+  },
+  UrlLoad {
+    source: url::ParseError,
+    text:   String,
+  },
+  UserMissingBio {
+    id: UserId,
+  },
+  UserUnknown {
+    id: UserId,
   },
 }
 
