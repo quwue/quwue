@@ -88,8 +88,13 @@ impl Db {
     Ok(user)
   }
 
-  async fn candidate<'a>(tx: &mut Transaction<'a>, discord_id: UserId) -> Result<Option<UserId>> {
+  async fn get_candidate<'a>(
+    tx: &mut Transaction<'a>,
+    discord_id: UserId,
+  ) -> Result<Option<UserId>> {
     let discord_id = discord_id.store();
+
+    let quiescent_discriminant = PromptDiscriminant::Quiescent.store();
 
     let row = sqlx::query!(
       "SELECT
@@ -107,17 +112,24 @@ impl Db {
         AND
         NOT EXISTS (
           SELECT * FROM responses
-          WHERE discord_id = ? AND candidate_id = users.discord_id
+          WHERE discord_id == ? AND candidate_id == users.discord_id
         )
         AND
         NOT EXISTS (
           SELECT * FROM responses
-          WHERE discord_id = users.discord_id AND candidate_id = ? AND NOT response
+          WHERE discord_id == users.discord_id AND candidate_id == ? AND NOT response
+        )
+        AND
+        EXISTS (
+          SELECT * FROM prompts
+          WHERE
+            recipient_discord_id = users.discord_id AND discriminant == ?
         )
       LIMIT 1",
       discord_id,
       discord_id,
-      discord_id
+      discord_id,
+      quiescent_discriminant,
     )
     .fetch_optional(tx)
     .await?;
@@ -175,7 +187,7 @@ impl Db {
     if prompt.quiescent() {
       if let Some(id) = Self::get_match(&mut tx, user_id).await? {
         prompt = Prompt::Match { id };
-      } else if let Some(id) = Self::candidate(&mut tx, user_id).await? {
+      } else if let Some(id) = Self::get_candidate(&mut tx, user_id).await? {
         prompt = Prompt::Candidate { id };
       }
     };
@@ -196,7 +208,7 @@ impl Db {
   ) -> Result<Option<UpdateTx<'a>>> {
     let mut tx = self.pool.begin().await?;
 
-    let row = {
+    let response = {
       let user_id = user_id.store();
       let candidate_id = candidate_id.store();
 
@@ -216,7 +228,7 @@ impl Db {
       .map(|row| row.response)
     };
 
-    let prompt = match row {
+    let prompt = match response {
       Some(true) => Prompt::Match { id: user_id },
       Some(false) => return Ok(None),
       None => Prompt::Candidate { id: user_id },
@@ -390,7 +402,7 @@ impl Db {
   }
 
   #[cfg(test)]
-  async fn create_profile(&self, id: UserId) {
+  async fn create_profile(&self, id: UserId, expected_prompt: Prompt) {
     self.user(id).await.unwrap();
 
     let update = Update {
@@ -423,6 +435,8 @@ impl Db {
     };
 
     let tx = self.prepare(id, &update).await.unwrap();
+
+    assert_eq!(tx.prompt(), expected_prompt);
 
     tx.commit(MessageId(200)).await.unwrap();
   }
@@ -481,7 +495,7 @@ mod tests {
     assert_eq!(db.user_count().await.unwrap(), 0);
 
     let a = UserId(100);
-    db.create_profile(a).await;
+    db.create_profile(a, Prompt::Quiescent).await;
 
     assert_eq!(db.user_count().await.unwrap(), 1);
 
@@ -660,17 +674,12 @@ mod tests {
     let a = UserId(100);
     let b = UserId(101);
 
-    context.db.create_profile(a).await;
-    context.db.create_profile(b).await;
+    context.db.create_profile(a, Prompt::Quiescent).await;
 
-    let update = Update {
-      action: None,
-      prompt: Prompt::Quiescent,
-    };
-
-    let tx = context.db.prepare(a, &update).await.unwrap();
-
-    assert_eq!(tx.prompt, Prompt::Candidate { id: b })
+    context
+      .db
+      .create_profile(b, Prompt::Candidate { id: a })
+      .await;
   }
 
   #[tokio::test(flavor = "multi_thread")]
@@ -680,26 +689,18 @@ mod tests {
     let a = UserId(100);
     let b = UserId(101);
 
-    context.db.create_profile(a).await;
-    context.db.create_profile(b).await;
+    context.db.create_profile(a, Prompt::Quiescent).await;
+    context
+      .db
+      .create_profile(b, Prompt::Candidate { id: a })
+      .await;
 
     let update = Update {
-      action: None,
+      action: Some(Action::AcceptCandidate { id: a }),
       prompt: Prompt::Quiescent,
     };
 
-    let tx = context.db.prepare(a, &update).await.unwrap();
-
-    assert_eq!(tx.prompt, Prompt::Candidate { id: b });
-
-    tx.commit(MessageId(200)).await.unwrap();
-
-    let update = Update {
-      action: Some(Action::AcceptCandidate { id: b }),
-      prompt: Prompt::Quiescent,
-    };
-
-    let tx = context.db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(b, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
   }
@@ -711,26 +712,18 @@ mod tests {
     let a = UserId(100);
     let b = UserId(101);
 
-    context.db.create_profile(a).await;
-    context.db.create_profile(b).await;
+    context.db.create_profile(a, Prompt::Quiescent).await;
+    context
+      .db
+      .create_profile(b, Prompt::Candidate { id: a })
+      .await;
 
     let update = Update {
-      action: None,
+      action: Some(Action::RejectCandidate { id: a }),
       prompt: Prompt::Quiescent,
     };
 
-    let tx = context.db.prepare(a, &update).await.unwrap();
-
-    assert_eq!(tx.prompt, Prompt::Candidate { id: b });
-
-    tx.commit(MessageId(200)).await.unwrap();
-
-    let update = Update {
-      action: Some(Action::RejectCandidate { id: b }),
-      prompt: Prompt::Quiescent,
-    };
-
-    let tx = context.db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(b, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
   }
@@ -742,26 +735,18 @@ mod tests {
     let a = UserId(100);
     let b = UserId(101);
 
-    context.db.create_profile(a).await;
-    context.db.create_profile(b).await;
+    context.db.create_profile(a, Prompt::Quiescent).await;
+    context
+      .db
+      .create_profile(b, Prompt::Candidate { id: a })
+      .await;
 
     let update = Update {
-      action: None,
+      action: Some(Action::RejectCandidate { id: a }),
       prompt: Prompt::Quiescent,
     };
 
-    let tx = context.db.prepare(a, &update).await.unwrap();
-
-    assert_eq!(tx.prompt, Prompt::Candidate { id: b });
-
-    tx.commit(MessageId(200)).await.unwrap();
-
-    let update = Update {
-      action: Some(Action::RejectCandidate { id: b }),
-      prompt: Prompt::Quiescent,
-    };
-
-    let tx = context.db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(b, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
 
@@ -772,7 +757,7 @@ mod tests {
       prompt: Prompt::Quiescent,
     };
 
-    let tx = context.db.prepare(b, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
   }
@@ -784,26 +769,18 @@ mod tests {
     let a = UserId(100);
     let b = UserId(101);
 
-    context.db.create_profile(a).await;
-    context.db.create_profile(b).await;
+    context.db.create_profile(a, Prompt::Quiescent).await;
+    context
+      .db
+      .create_profile(b, Prompt::Candidate { id: a })
+      .await;
 
     let update = Update {
-      action: None,
+      action: Some(Action::AcceptCandidate { id: a }),
       prompt: Prompt::Quiescent,
     };
 
-    let tx = context.db.prepare(a, &update).await.unwrap();
-
-    assert_eq!(tx.prompt, Prompt::Candidate { id: b });
-
-    tx.commit(MessageId(200)).await.unwrap();
-
-    let update = Update {
-      action: Some(Action::AcceptCandidate { id: b }),
-      prompt: Prompt::Quiescent,
-    };
-
-    let tx = context.db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(b, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
 
@@ -814,9 +791,9 @@ mod tests {
       prompt: Prompt::Quiescent,
     };
 
-    let tx = context.db.prepare(b, &update).await.unwrap();
+    let tx = context.db.prepare(a, &update).await.unwrap();
 
-    assert_eq!(tx.prompt, Prompt::Candidate { id: a });
+    assert_eq!(tx.prompt, Prompt::Candidate { id: b });
   }
 
   #[tokio::test(flavor = "multi_thread")]
@@ -826,45 +803,37 @@ mod tests {
     let a = UserId(100);
     let b = UserId(101);
 
-    context.db.create_profile(a).await;
-    context.db.create_profile(b).await;
+    context.db.create_profile(a, Prompt::Quiescent).await;
+    context
+      .db
+      .create_profile(b, Prompt::Candidate { id: a })
+      .await;
 
     let update = Update {
-      action: None,
+      action: Some(Action::AcceptCandidate { id: a }),
       prompt: Prompt::Quiescent,
     };
 
-    let tx = context.db.prepare(a, &update).await.unwrap();
-
-    assert_eq!(tx.prompt, Prompt::Candidate { id: b });
-
-    tx.commit(MessageId(200)).await.unwrap();
-
-    let update = Update {
-      action: Some(Action::AcceptCandidate { id: b }),
-      prompt: Prompt::Quiescent,
-    };
-
-    let tx = context.db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(b, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
 
     tx.commit(MessageId(201)).await.unwrap();
 
-    assert!(context.db.response(a, b).await);
+    assert!(context.db.response(b, a).await);
 
     let update = Update {
-      action: Some(Action::RejectCandidate { id: b }),
+      action: Some(Action::RejectCandidate { id: a }),
       prompt: Prompt::Quiescent,
     };
 
-    let tx = context.db.prepare(a, &update).await.unwrap();
+    let tx = context.db.prepare(b, &update).await.unwrap();
 
     assert_eq!(tx.prompt, Prompt::Quiescent);
 
     tx.commit(MessageId(201)).await.unwrap();
 
-    assert!(!context.db.response(a, b).await);
+    assert!(!context.db.response(b, a).await);
   }
 
   #[tokio::test(flavor = "multi_thread")]
@@ -874,19 +843,11 @@ mod tests {
     let a = UserId(100);
     let b = UserId(101);
 
-    context.db.create_profile(a).await;
-    context.db.create_profile(b).await;
-
-    let update = Update {
-      action: Some(Action::AcceptCandidate { id: b }),
-      prompt: Prompt::Quiescent,
-    };
-
-    let tx = context.db.prepare(a, &update).await.unwrap();
-
-    assert_eq!(tx.prompt, Prompt::Quiescent);
-
-    tx.commit(MessageId(201)).await.unwrap();
+    context.db.create_profile(a, Prompt::Quiescent).await;
+    context
+      .db
+      .create_profile(b, Prompt::Candidate { id: a })
+      .await;
 
     let update = Update {
       action: Some(Action::AcceptCandidate { id: a }),
@@ -895,7 +856,18 @@ mod tests {
 
     let tx = context.db.prepare(b, &update).await.unwrap();
 
-    assert_eq!(tx.prompt, Prompt::Match { id: a });
+    assert_eq!(tx.prompt, Prompt::Quiescent);
+
+    tx.commit(MessageId(201)).await.unwrap();
+
+    let update = Update {
+      action: Some(Action::AcceptCandidate { id: b }),
+      prompt: Prompt::Quiescent,
+    };
+
+    let tx = context.db.prepare(a, &update).await.unwrap();
+
+    assert_eq!(tx.prompt, Prompt::Match { id: b });
 
     tx.commit(MessageId(201)).await.unwrap();
   }
@@ -905,7 +877,7 @@ mod tests {
     let context = TestContext::new().await;
 
     let a = UserId(100);
-    context.db.create_profile(a).await;
+    context.db.create_profile(a, Prompt::Quiescent).await;
 
     let mut tx = context.db.pool.begin().await.unwrap();
 
@@ -929,7 +901,7 @@ mod tests {
     let context = TestContext::new().await;
 
     let a = UserId(100);
-    context.db.create_profile(a).await;
+    context.db.create_profile(a, Prompt::Quiescent).await;
 
     let mut tx = context.db.pool.begin().await.unwrap();
 

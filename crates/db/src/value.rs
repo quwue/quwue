@@ -42,11 +42,7 @@ impl Value for Prompt {
   fn load((discriminant, payload): Self::Storage) -> Result<Self, Self::Err> {
     use PromptDiscriminant::*;
 
-    let discriminant = u64::load(discriminant).unwrap_infallible();
-
-    let discriminant: PromptDiscriminant = discriminant
-      .try_into()
-      .context(error::PromptLoadBadDiscriminant { discriminant })?;
+    let discriminant = PromptDiscriminant::load(discriminant)?;
 
     match (discriminant, payload) {
       (Bio, None) => Ok(Self::Bio),
@@ -66,6 +62,23 @@ impl Value for Prompt {
         }),
       (Candidate | Match, None) => Err(Error::PromptLoadMissingPayload { discriminant }),
     }
+  }
+}
+
+impl Value for PromptDiscriminant {
+  type Err = Error;
+  type Storage = i64;
+
+  fn load(storage: Self::Storage) -> Result<Self, Self::Err> {
+    let discriminant = u64::load(storage).unwrap_infallible();
+
+    discriminant
+      .try_into()
+      .context(error::PromptLoadBadDiscriminant { discriminant })
+  }
+
+  fn store(self) -> Self::Storage {
+    (self as u64).store()
   }
 }
 

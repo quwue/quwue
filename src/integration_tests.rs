@@ -332,6 +332,9 @@ fn candidate_hidden_after_rejection() {
   })
 }
 
+// TODO:
+// - test that candidates with match and candidate prompts are excluded
+
 #[instrument]
 #[test]
 #[ignore]
