@@ -1,3 +1,5 @@
+set dotenv-load
+
 bt := '0'
 log := 'warn'
 
