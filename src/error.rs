@@ -1,6 +1,8 @@
 use crate::common::*;
 
-use twilight_http::request::channel::message::create_message::CreateMessageError;
+use twilight_http::{
+  request::channel::message::create_message::CreateMessageError, response::DeserializeBodyError,
+};
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
@@ -32,17 +34,22 @@ pub(crate) enum Error {
   #[snafu(display("Failed to parse embed image URL: {}", source))]
   EmbedImageUrlParse {
     source: url::ParseError,
-    text:   String,
+    text: String,
   },
+  #[snafu(
+    context(false),
+    display("Failed to deserialize response body: {}", source)
+  )]
+  DeserializeBody { source: DeserializeBodyError },
 }
 
 impl Error {
   pub(crate) fn user_facing_message(&self) -> String {
     match self {
-      Self::Token { .. } => "Failed to get authentication token from environment.".into(),
-      Self::ClusterStart { .. } => "Discord gateway error.".into(),
-      Self::Http { source } =>
-        if let HttpError::Response { status, error, .. } = source {
+      Self::Token { .. } => "Failed to get authentication token from environment".into(),
+      Self::ClusterStart { .. } => "Discord gateway error".into(),
+      Self::Http { source } => {
+        if let twilight_http::error::ErrorType::Response { status, error, .. } = source.kind() {
           if let ApiError::Ratelimited(ratelimited) = error {
             format!(
               "Ratelimited{}, status {}, retry after {}: {}",
@@ -55,18 +62,20 @@ impl Error {
             format!("HTTP error {}", status)
           }
         } else {
-          "HTTP error.".to_owned()
-        },
+          "HTTP error".to_owned()
+        }
+      }
       Self::CreateMessage { .. } => "Failed to send message".into(),
       Self::User => "Failed to get current user".into(),
       Self::UnexpectedEvent { .. } => "Unexpected event".into(),
-      Self::PublicResponse { .. } => "Received a non-private response.".into(),
-      Self::BotResponse { .. } => "Received a response from a bot.".into(),
-      Self::Db { .. } => "Database error.".into(),
-      Self::Migration { .. } => "Database migration error.".into(),
-      Self::Runtime { .. } => "Failed to initialize runtime.".into(),
-      Self::UserUnavailable { .. } => "Failed to retrieve Discord user by ID.".into(),
-      Self::EmbedImageUrlParse { .. } => "Failed to parse embed image URL.".into(),
+      Self::PublicResponse { .. } => "Received a non-private response".into(),
+      Self::BotResponse { .. } => "Received a response from a bot".into(),
+      Self::Db { .. } => "Database error".into(),
+      Self::Migration { .. } => "Database migration error".into(),
+      Self::Runtime { .. } => "Failed to initialize runtime".into(),
+      Self::UserUnavailable { .. } => "Failed to retrieve Discord user by ID".into(),
+      Self::EmbedImageUrlParse { .. } => "Failed to parse embed image URL".into(),
+      Self::DeserializeBody { .. } => "Failed to deserialize response body".into(),
     }
   }
 }

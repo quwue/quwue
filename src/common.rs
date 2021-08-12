@@ -20,8 +20,14 @@ pub(crate) use ::{
   tracing_log::LogTracer,
   tracing_subscriber::{layer::SubscriberExt, EnvFilter},
   twilight_cache_inmemory::InMemoryCache,
-  twilight_gateway::{cluster::ClusterStartError, Cluster, EventTypeFlags, Intents},
-  twilight_http::{api_error::ApiError, client::Client, Error as HttpError},
+  twilight_gateway::{
+    cluster::{ClusterStartError, Events},
+    Cluster, EventTypeFlags, Intents,
+  },
+  twilight_http::{
+    api_error::ApiError, client::Client, request::channel::reaction::RequestReactionType,
+    Error as HttpError,
+  },
   twilight_model::{
     channel::{Channel, ChannelType, Message, ReactionType},
     gateway::{
