@@ -321,7 +321,7 @@ impl Bot {
 
     let channel = match self.client().channel(id).exec().await {
       Ok(response) => response.model().await.expect("TODO"),
-      Err(e) => todo!(),
+      Err(_) => todo!(),
     };
 
     match channel {

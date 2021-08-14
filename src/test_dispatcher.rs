@@ -6,6 +6,7 @@ type Channels = BTreeMap<TestUserId, mpsc::UnboundedSender<(MessageId, TestEvent
 pub(crate) struct TestDispatcher {
   channel: TextChannel,
   cluster: Cluster,
+  events: Mutex<Events>,
   guild: Guild,
   member: Member,
   test_run_id: TestRunId,
@@ -40,9 +41,7 @@ async_static! {
 
 impl TestDispatcher {
   async fn dispatch(&self) {
-    let mut events = self
-      .cluster
-      .some_events(EventTypeFlags::MESSAGE_CREATE | EventTypeFlags::REACTION_ADD);
+    let mut events = self.events.lock().await;
 
     while let Some((_shard_id, event)) = events.next().await {
       info!("Received event: {:?}", event.kind());
@@ -71,7 +70,7 @@ impl TestDispatcher {
           let emoji = match &reaction.emoji {
             ReactionType::Custom { .. } => {
               panic!("Unexpected custom reaction: {:?}", reaction.emoji)
-            },
+            }
             ReactionType::Unicode { name } => {
               if let Some(emoji) = Emoji::from_chars(&name) {
                 emoji
@@ -84,8 +83,11 @@ impl TestDispatcher {
           let message = self
             .client()
             .message(reaction.channel_id, reaction.message_id)
+            .exec()
             .await
             .unwrap()
+            .model()
+            .await
             .unwrap();
 
           if let Some(test_message) = self.test_run_id.filter(&message.content) {
@@ -114,19 +116,48 @@ impl TestDispatcher {
 
     info!("Initializing run instance…");
 
-    let cluster = TestDispatcher::initialize_cluster().await;
+    let (cluster, events) = TestDispatcher::initialize_cluster().await;
 
     let client = cluster.config().http_client();
 
-    let user_id = client.current_user().await.unwrap().id;
+    let user_id = client
+      .current_user()
+      .exec()
+      .await
+      .unwrap()
+      .model()
+      .await
+      .unwrap()
+      .id;
 
-    let user = client.user(user_id).await.unwrap().unwrap();
+    let user = client
+      .user(user_id)
+      .exec()
+      .await
+      .unwrap()
+      .model()
+      .await
+      .unwrap();
 
-    let guilds = client.current_user_guilds().await.unwrap();
+    let guilds = client
+      .current_user_guilds()
+      .exec()
+      .await
+      .unwrap()
+      .models()
+      .await
+      .unwrap();
 
     let guild = match guilds.len() {
       0 => panic!("Expect must be added to the testing guild."),
-      1 => client.guild(guilds[0].id).await.unwrap().unwrap(),
+      1 => client
+        .guild(guilds[0].id)
+        .exec()
+        .await
+        .unwrap()
+        .model()
+        .await
+        .unwrap(),
       _ => panic!("Expect may not be in more than one guild."),
     };
 
@@ -135,7 +166,14 @@ impl TestDispatcher {
       "Unexpected testing guild name"
     );
 
-    let channels = client.guild_channels(guild.id).await.unwrap();
+    let channels = client
+      .guild_channels(guild.id)
+      .exec()
+      .await
+      .unwrap()
+      .models()
+      .await
+      .unwrap();
 
     let mut testing_channels = channels
       .into_iter()
@@ -146,6 +184,10 @@ impl TestDispatcher {
       0 => client
         .create_guild_channel(guild.id, CHANNEL_NAME)
         .unwrap()
+        .exec()
+        .await
+        .unwrap()
+        .model()
         .await
         .unwrap(),
       1 => testing_channels.remove(0),
@@ -159,8 +201,11 @@ impl TestDispatcher {
 
     let member = client
       .guild_member(guild.id, user.id)
+      .exec()
       .await
       .unwrap()
+      .model()
+      .await
       .unwrap();
 
     let test_run = member
@@ -170,7 +215,8 @@ impl TestDispatcher {
       .unwrap_or(0);
 
     client
-      .update_current_user_nick(guild.id, test_run.to_string())
+      .update_current_user_nick(guild.id, &test_run.to_string())
+      .exec()
       .await
       .unwrap();
 
@@ -180,6 +226,7 @@ impl TestDispatcher {
       .create_message(channel.id)
       .content(&format!("**Test Run {}**", test_run))
       .unwrap()
+      .exec()
       .await
       .unwrap();
 
@@ -189,16 +236,17 @@ impl TestDispatcher {
 
     Self {
       test_run_id: TestRunId::new(test_run),
+      events: Mutex::new(events),
       channel,
+      channels,
       cluster,
       guild,
-      channels,
       member,
       user,
     }
   }
 
-  async fn initialize_cluster() -> Cluster {
+  async fn initialize_cluster() -> (Cluster, Events) {
     #[derive(Deserialize, Debug)]
     struct Ratelimit {
       global: bool,
@@ -208,47 +256,58 @@ impl TestDispatcher {
 
     let token = expect_var("EXPECT_TOKEN");
 
-    let cluster = loop {
-      match Cluster::new(
+    let (cluster, mut events) = loop {
+      let result = Cluster::builder(
         &token,
         Intents::GUILD_MESSAGES | Intents::GUILD_MESSAGE_REACTIONS,
       )
-      .await
-      {
+      .event_types(
+        EventTypeFlags::MESSAGE_CREATE | EventTypeFlags::REACTION_ADD | EventTypeFlags::READY,
+      )
+      .build()
+      .await;
+
+      match result {
         Ok(cluster) => break cluster,
-        Err(ClusterStartError::RetrievingGatewayInfo {
-          source: HttpError::Response { body, status, .. },
-        }) if status == StatusCode::TOO_MANY_REQUESTS => {
-          let body = String::from_utf8_lossy(&body);
-          match serde_json::from_str::<Ratelimit>(&body) {
-            Err(serde_error) => panic!(
-              "Failed to deserialize response body: {}\n{}",
-              serde_error, body,
-            ),
-            Ok(ratelimit) => {
-              if ratelimit.global {
-                panic!("Ratelimited globally: {:?}", ratelimit);
-              } else {
-                let duration = Duration::from_secs_f64(ratelimit.retry_after);
-                info!("Retrying after {} seconds…", duration.as_secs());
-                time::sleep(duration).await;
+        Err(error) => {
+          match error.source().unwrap().downcast_ref::<HttpError>() {
+            Some(http_error) => {
+              if let twilight_http::error::ErrorType::Response { body, status, .. } =
+                http_error.kind()
+              {
+                if status.raw() == 429 {
+                  let body = String::from_utf8_lossy(&body);
+                  match serde_json::from_str::<Ratelimit>(&body) {
+                    Err(serde_error) => panic!(
+                      "Failed to deserialize response body: {}\n{}",
+                      serde_error, body,
+                    ),
+                    Ok(ratelimit) => {
+                      if ratelimit.global {
+                        panic!("Ratelimited globally: {:?}", ratelimit);
+                      } else {
+                        let duration = Duration::from_secs_f64(ratelimit.retry_after);
+                        info!("Retrying after {} seconds…", duration.as_secs());
+                        time::sleep(duration).await;
+                        continue;
+                      }
+                    }
+                  }
+                }
               }
             }
+            None => {}
           }
+          panic!("Received unexpected cluster start error: {}", error);
         }
-        Err(other) => panic!("Received unexpected cluster start error: {}", other),
-      };
+      }
     };
 
     cluster.up().await;
 
-    cluster
-      .some_events(EventTypeFlags::READY)
-      .next()
-      .await
-      .unwrap();
+    events.next().await.unwrap();
 
-    cluster
+    (cluster, events)
   }
 
   pub(crate) async fn register_test_user(
@@ -269,8 +328,9 @@ impl TestDispatcher {
     self
       .client()
       .create_message(self.channel())
-      .content(content)
+      .content(&content)
       .unwrap()
+      .exec()
       .await
       .unwrap();
   }
@@ -279,7 +339,8 @@ impl TestDispatcher {
     rate_limit::wait().await;
     self
       .client()
-      .create_reaction(self.channel(), id, emoji.into())
+      .create_reaction(self.channel(), id, &emoji.into())
+      .exec()
       .await
       .unwrap();
   }
@@ -295,9 +356,10 @@ impl TestDispatcher {
     self
       .client()
       .create_message(self.channel())
-      .content(content)
+      .content(&content)
       .unwrap()
-      .attachment(filename, data)
+      .files(&[(filename, &data)])
+      .exec()
       .await
       .unwrap();
   }

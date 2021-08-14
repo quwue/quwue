@@ -1,6 +1,7 @@
 // stdlib
 pub(crate) use std::{
   env,
+  error::Error as _,
   fmt::{self, Display, Formatter},
   io,
   ops::Deref,
@@ -24,10 +25,7 @@ pub(crate) use ::{
     cluster::{ClusterStartError, Events},
     Cluster, EventTypeFlags, Intents,
   },
-  twilight_http::{
-    api_error::ApiError, client::Client, request::channel::reaction::RequestReactionType,
-    Error as HttpError,
-  },
+  twilight_http::{api_error::ApiError, client::Client, Error as HttpError},
   twilight_model::{
     channel::{Channel, ChannelType, Message, ReactionType},
     gateway::{
@@ -72,7 +70,6 @@ mod test {
       future::{Future, FutureExt},
       select,
     },
-    http::StatusCode,
     once_cell::sync::Lazy,
     serde::Deserialize,
     tempfile::TempDir,
