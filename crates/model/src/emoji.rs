@@ -36,10 +36,13 @@ impl Emoji {
   }
 }
 
-impl From<Emoji> for RequestReactionType {
+impl From<Emoji> for RequestReactionType<'static> {
   fn from(emoji: Emoji) -> Self {
     Self::Unicode {
-      name: emoji.char().into(),
+      name: match emoji {
+        Emoji::ThumbsDown => "👎",
+        Emoji::ThumbsUp => "👍",
+      },
     }
   }
 }

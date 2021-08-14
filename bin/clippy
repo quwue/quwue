@@ -17,4 +17,5 @@ cargo clippy --all --all-targets --all-features -- \
   --allow clippy::non-ascii-literal                \
   --allow clippy::option-if-let-else               \
   --allow clippy::semicolon_if_nothing_returned    \
+  --allow clippy::too-many-lines                   \
   --allow clippy::wildcard-imports

@@ -6,4 +6,4 @@ edition = "2018"
 publish = false
 
 [dependencies]
-twilight-model = "0.3.0"
+twilight-model = "0.6.0"

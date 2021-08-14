@@ -20,6 +20,7 @@ mod common;
 mod error;
 mod logging;
 mod rate_limit;
+mod response_future_ext;
 mod runtime;
 mod test_id;
 mod test_message;

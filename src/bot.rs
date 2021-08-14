@@ -2,7 +2,7 @@ use crate::common::*;
 
 async_static! {
   test_cluster,
-  Cluster,
+  (Cluster, Arc<Mutex<Events>>),
   {
     Bot::initialize_cluster(true)
       .await
@@ -20,6 +20,7 @@ pub(crate) struct Inner {
   cache:   InMemoryCache,
   cluster: Cluster,
   db:      Db,
+  events:  Arc<Mutex<Events>>,
   test_id: Option<TestId>,
   user:    discord::User,
 }
@@ -52,9 +53,7 @@ impl Bot {
   pub(crate) async fn run(self) -> Result<()> {
     info!("Starting run loop.");
 
-    let mut events = self
-      .cluster
-      .some_events(EventTypeFlags::MESSAGE_CREATE | EventTypeFlags::REACTION_ADD);
+    let mut events = self.events.lock().await;
 
     while let Some((shard_id, event)) = events.next().await {
       let clone = self.clone();
@@ -107,6 +106,7 @@ impl Bot {
           "Internal error: {}\n\nThis is a bug in Quwue.",
           err.user_facing_message()
         ))?
+        .exec()
         .await?;
     }
 
@@ -116,22 +116,23 @@ impl Bot {
   async fn handle_reaction_add(&self, reaction_add: ReactionAdd) -> Result<()> {
     let ReactionAdd(reaction) = reaction_add;
 
-    let sender = self.client().user(reaction.user_id).await?;
-
-    let bot = if let Some(sender) = sender {
-      sender.bot
-    } else {
-      return Err(Error::UserUnavailable {
-        user_id: reaction.user_id,
-      });
-    };
+    let bot = self
+      .client()
+      .user(reaction.user_id)
+      .exec()
+      .await?
+      .model()
+      .await?
+      .bot;
 
     let user_id = if self.is_test() {
       let message = self
         .client()
         .message(reaction.channel_id, reaction.message_id)
+        .exec()
         .await?
-        .expect("failed to retrieve reaction message");
+        .model()
+        .await?;
 
       let test_message =
         TestMessage::parse(&message.content).expect("failed to parse reaction message");
@@ -231,7 +232,7 @@ impl Bot {
       }
     }
 
-    if !self.is_private_channel(channel_id).await {
+    if !self.is_private_channel(channel_id).await? {
       if self.is_test() {
         info!("Processing public channel message.");
       } else {
@@ -260,7 +261,8 @@ impl Bot {
       rate_limit::wait().await;
       self
         .client()
-        .create_reaction(channel_id, prompt_message.id, reaction_type)
+        .create_reaction(channel_id, prompt_message.id, &reaction_type)
+        .exec()
         .await?;
     }
 
@@ -275,7 +277,14 @@ impl Bot {
         let channel_id = if cfg!(test) {
           channel_id
         } else {
-          self.client().create_private_channel(candidate_id).await?.id
+          self
+            .client()
+            .create_private_channel(candidate_id)
+            .exec()
+            .await?
+            .model()
+            .await?
+            .id
         };
 
         let prompt = tx.prompt();
@@ -293,7 +302,8 @@ impl Bot {
           rate_limit::wait().await;
           self
             .client()
-            .create_reaction(channel_id, prompt_message.id, reaction_type)
+            .create_reaction(channel_id, prompt_message.id, &reaction_type)
+            .exec()
             .await?;
         }
 
@@ -304,16 +314,16 @@ impl Bot {
     Ok(())
   }
 
-  async fn is_private_channel(&self, id: ChannelId) -> bool {
+  async fn is_private_channel(&self, id: ChannelId) -> Result<bool> {
     if let Some(private_channel) = self.cache.private_channel(id) {
-      return matches!(private_channel.kind, ChannelType::Private);
+      return Ok(matches!(private_channel.kind, ChannelType::Private));
     }
 
-    let channel = self.client().channel(id).await.unwrap_or_default();
+    let channel = self.client().channel(id).exec().optional_model().await?;
 
     match channel {
-      Some(Channel::Private(_)) => true,
-      Some(Channel::Group(_) | Channel::Guild(_)) | None => false,
+      Some(Channel::Private(_)) => Ok(true),
+      Some(Channel::Group(_) | Channel::Guild(_)) | None => Ok(false),
     }
   }
 
@@ -330,7 +340,14 @@ impl Bot {
       |test_id| test_id.prefix_message(user_id.0, content),
     );
 
-    Ok(create_message.content(content)?.await?)
+    Ok(
+      create_message
+        .content(&content)?
+        .exec()
+        .await?
+        .model()
+        .await?,
+    )
   }
 
   #[cfg(test)]
@@ -342,7 +359,7 @@ impl Bot {
     self.cluster.config().http_client()
   }
 
-  async fn initialize_cluster(test: bool) -> Result<Cluster> {
+  async fn initialize_cluster(test: bool) -> Result<(Cluster, Arc<Mutex<Events>>)> {
     let token = env::var("QUWUE_TOKEN").context(error::Token)?;
 
     let mut intents = Intents::DIRECT_MESSAGES | Intents::DIRECT_MESSAGE_REACTIONS;
@@ -352,21 +369,25 @@ impl Bot {
       intents |= Intents::GUILD_MESSAGE_REACTIONS;
     }
 
-    let cluster = Cluster::new(token, intents).await?;
+    let (cluster, mut events) = Cluster::builder(token, intents)
+      .event_types(
+        EventTypeFlags::READY | EventTypeFlags::MESSAGE_CREATE | EventTypeFlags::REACTION_ADD,
+      )
+      .build()
+      .await?;
 
     cluster.up().await;
 
-    cluster
-      .some_events(EventTypeFlags::READY)
-      .next()
-      .await
-      .expect("Did not receive ready event");
+    match events.next().await {
+      Some((_, Event::Ready(_))) => {},
+      event => return Err(Error::ClusterReady { event }),
+    }
 
-    Ok(cluster)
+    Ok((cluster, Arc::new(Mutex::new(events))))
   }
 
   async fn new(db_path: &Path, test_id: Option<TestId>) -> Result<Self> {
-    let cluster = if test_id.is_some() {
+    let (cluster, events) = if test_id.is_some() {
       test_cluster::get().await.clone()
     } else {
       Self::initialize_cluster(false).await?
@@ -374,9 +395,9 @@ impl Bot {
 
     let client = cluster.config().http_client();
 
-    let user_id = client.current_user().await?.id;
+    let user_id = client.current_user().exec().await?.model().await?.id;
 
-    let user = client.user(user_id).await?.ok_or(Error::User)?;
+    let user = client.user(user_id).exec().await?.model().await?;
 
     let cache = InMemoryCache::new();
 
@@ -386,6 +407,7 @@ impl Bot {
       cache,
       cluster,
       db,
+      events,
       test_id,
       user,
     };
