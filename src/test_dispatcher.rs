@@ -4,14 +4,14 @@ type Channels = BTreeMap<TestUserId, mpsc::UnboundedSender<(MessageId, TestEvent
 
 #[derive(Debug)]
 pub(crate) struct TestDispatcher {
-  channel: TextChannel,
-  cluster: Cluster,
-  events: Mutex<Events>,
-  guild: Guild,
-  member: Member,
+  channel:     TextChannel,
+  cluster:     Cluster,
+  events:      Mutex<Events>,
+  guild:       Guild,
+  member:      Member,
   test_run_id: TestRunId,
-  user: discord::User,
-  channels: Arc<RwLock<Channels>>,
+  user:        discord::User,
+  channels:    Arc<RwLock<Channels>>,
 }
 
 #[cfg(test)]
@@ -60,7 +60,7 @@ impl TestDispatcher {
                 .expect("message send failed");
             }
           }
-        }
+        },
         Event::ReactionAdd(reaction) => {
           if reaction.user_id == self.user.id {
             info!("Ignoring reaction from expect: {:?}", reaction);
@@ -70,14 +70,13 @@ impl TestDispatcher {
           let emoji = match &reaction.emoji {
             ReactionType::Custom { .. } => {
               panic!("Unexpected custom reaction: {:?}", reaction.emoji)
-            }
-            ReactionType::Unicode { name } => {
+            },
+            ReactionType::Unicode { name } =>
               if let Some(emoji) = Emoji::from_chars(name) {
                 emoji
               } else {
                 panic!("Unrecognized reaction: {}", name);
-              }
-            }
+              },
           };
 
           let message = self
@@ -97,7 +96,7 @@ impl TestDispatcher {
                 .expect("message send failed");
             }
           }
-        }
+        },
         _ => panic!("Unexpected event: {:?}", event.kind()),
       }
     }
@@ -249,9 +248,9 @@ impl TestDispatcher {
   async fn initialize_cluster() -> (Cluster, Events) {
     #[derive(Deserialize, Debug)]
     struct Ratelimit {
-      global: bool,
+      global:      bool,
       retry_after: f64,
-      message: String,
+      message:     String,
     }
 
     let token = expect_var("EXPECT_TOKEN");
@@ -281,7 +280,7 @@ impl TestDispatcher {
                     "Failed to deserialize response body: {}\n{}",
                     serde_error, body,
                   ),
-                  Ok(ratelimit) => {
+                  Ok(ratelimit) =>
                     if ratelimit.global {
                       panic!("Ratelimited globally: {:?}", ratelimit);
                     } else {
@@ -289,14 +288,13 @@ impl TestDispatcher {
                       info!("Retrying after {} seconds…", duration.as_secs());
                       time::sleep(duration).await;
                       continue;
-                    }
-                  }
+                    },
                 }
               }
             }
           }
           panic!("Received unexpected cluster start error: {}", error);
-        }
+        },
       }
     };
 
