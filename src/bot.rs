@@ -20,9 +20,9 @@ pub(crate) struct Inner {
   cache:   InMemoryCache,
   cluster: Cluster,
   db:      Db,
+  events:  Arc<Mutex<Events>>,
   test_id: Option<TestId>,
   user:    discord::User,
-  events:  Arc<Mutex<Events>>,
 }
 
 impl Deref for Bot {
@@ -380,7 +380,7 @@ impl Bot {
 
     match events.next().await {
       Some((_, Event::Ready(_))) => {},
-      event => return Err(Error::ClusterReady { event })
+      event => return Err(Error::ClusterReady { event }),
     }
 
     Ok((cluster, Arc::new(Mutex::new(events))))

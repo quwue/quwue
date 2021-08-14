@@ -1,7 +1,6 @@
 // stdlib
 pub(crate) use std::{
   env,
-  error::Error as _,
   fmt::{self, Display, Formatter},
   io,
   marker::Unpin,
@@ -67,7 +66,7 @@ pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
 #[cfg(test)]
 mod test {
   // stdlib
-  pub(crate) use std::collections::BTreeMap;
+  pub(crate) use std::{collections::BTreeMap, error::Error as _};
 
   // dependencies
   pub(crate) use ::{
