@@ -11,6 +11,7 @@ resolver = "2"
 
 [dependencies]
 ansi_term               = "0.12.1"
+async-trait             = "0.1.51"
 futures-util            = "0.3.12"
 image                   = "0.23.14"
 lazy_static             = "1.4.0"
@@ -36,6 +37,10 @@ model   = { path = "crates/model"   }
 version  = "0.5.1"
 features = ["runtime-tokio-rustls", "sqlite", "offline"]
 
+[dependencies.serde]
+version  = "1.0.0"
+features = ["derive"]
+
 [dependencies.tokio]
 version          = "1.0.0"
 default-features = false
@@ -46,10 +51,6 @@ futures    = "0.3.8"
 http       = "0.2.1"
 serde_json = "1.0.59"
 tempfile   = "3.2.0"
-
-[dev-dependencies.serde]
-version  = "1.0.0"
-features = ["derive"]
 
 [dev-dependencies.test-env-log]
 version          = "0.2.2"

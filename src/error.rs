@@ -34,13 +34,17 @@ pub(crate) enum Error {
   #[snafu(display("Failed to parse embed image URL: {}", source))]
   EmbedImageUrlParse {
     source: url::ParseError,
-    text: String,
+    text:   String,
   },
   #[snafu(
     context(false),
     display("Failed to deserialize response body: {}", source)
   )]
   DeserializeBody { source: DeserializeBodyError },
+  #[snafu(display("Did not get ready event after starting cluster."))]
+  ClusterReady  {
+    event: Option<(u64, Event)>
+  }
 }
 
 impl Error {
@@ -64,7 +68,7 @@ impl Error {
         } else {
           "HTTP error".to_owned()
         }
-      }
+      },
       Self::CreateMessage { .. } => "Failed to send message".into(),
       Self::User => "Failed to get current user".into(),
       Self::UnexpectedEvent { .. } => "Unexpected event".into(),
@@ -76,6 +80,7 @@ impl Error {
       Self::UserUnavailable { .. } => "Failed to retrieve Discord user by ID".into(),
       Self::EmbedImageUrlParse { .. } => "Failed to parse embed image URL".into(),
       Self::DeserializeBody { .. } => "Failed to deserialize response body".into(),
+      Self::ClusterReady { .. } => "Did not get ready event after starting cluster.".into(),
     }
   }
 }

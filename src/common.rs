@@ -4,6 +4,7 @@ pub(crate) use std::{
   error::Error as _,
   fmt::{self, Display, Formatter},
   io,
+  marker::Unpin,
   ops::Deref,
   panic,
   path::{Path, PathBuf},
@@ -14,7 +15,9 @@ pub(crate) use std::{
 
 // dependencies
 pub(crate) use ::{
+  async_trait::async_trait,
   futures_util::StreamExt,
+  serde::de::DeserializeOwned,
   snafu::{ResultExt, Snafu},
   structopt::StructOpt,
   tokio::{runtime::Runtime, sync::Mutex},
@@ -25,7 +28,9 @@ pub(crate) use ::{
     cluster::{ClusterStartError, Events},
     Cluster, EventTypeFlags, Intents,
   },
-  twilight_http::{api_error::ApiError, client::Client, Error as HttpError},
+  twilight_http::{
+    api_error::ApiError, client::Client, response::ResponseFuture, Error as HttpError,
+  },
   twilight_model::{
     channel::{Channel, ChannelType, Message, ReactionType},
     gateway::{
@@ -51,8 +56,8 @@ pub(crate) use crate::{async_static, error, logging, rate_limit, runtime};
 
 // structs and enums
 pub(crate) use crate::{
-  arguments::Arguments, bot::Bot, error::Error, test_id::TestId, test_message::TestMessage,
-  test_run_id::TestRunId, test_user_id::TestUserId,
+  arguments::Arguments, bot::Bot, error::Error, response_future_ext::ResponseFutureExt,
+  test_id::TestId, test_message::TestMessage, test_run_id::TestRunId, test_user_id::TestUserId,
 };
 
 // type aliases

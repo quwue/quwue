@@ -17,12 +17,12 @@ pub(crate) struct Bot {
 
 #[derive(Debug)]
 pub(crate) struct Inner {
-  cache: InMemoryCache,
+  cache:   InMemoryCache,
   cluster: Cluster,
-  db: Db,
+  db:      Db,
   test_id: Option<TestId>,
-  user: discord::User,
-  events: Arc<Mutex<Events>>,
+  user:    discord::User,
+  events:  Arc<Mutex<Events>>,
 }
 
 impl Deref for Bot {
@@ -232,7 +232,7 @@ impl Bot {
       }
     }
 
-    if !self.is_private_channel(channel_id).await {
+    if !self.is_private_channel(channel_id).await? {
       if self.is_test() {
         info!("Processing public channel message.");
       } else {
@@ -314,19 +314,16 @@ impl Bot {
     Ok(())
   }
 
-  async fn is_private_channel(&self, id: ChannelId) -> bool {
+  async fn is_private_channel(&self, id: ChannelId) -> Result<bool> {
     if let Some(private_channel) = self.cache.private_channel(id) {
-      return matches!(private_channel.kind, ChannelType::Private);
+      return Ok(matches!(private_channel.kind, ChannelType::Private));
     }
 
-    let channel = match self.client().channel(id).exec().await {
-      Ok(response) => response.model().await.expect("TODO"),
-      Err(_) => todo!(),
-    };
+    let channel = self.client().channel(id).exec().optional_model().await?;
 
     match channel {
-      Channel::Private(_) => true,
-      Channel::Group(_) | Channel::Guild(_) => false,
+      Some(Channel::Private(_)) => Ok(true),
+      Some(Channel::Group(_) | Channel::Guild(_)) | None => Ok(false),
     }
   }
 
@@ -382,8 +379,8 @@ impl Bot {
     cluster.up().await;
 
     match events.next().await {
-      Some((_, Event::Ready(_))) => {}
-      _ => todo!(),
+      Some((_, Event::Ready(_))) => {},
+      event => return Err(Error::ClusterReady { event })
     }
 
     Ok((cluster, Arc::new(Mutex::new(events))))
