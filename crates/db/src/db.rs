@@ -43,18 +43,11 @@ impl Db {
         None => None,
       };
 
-      let profile_image_url = if let Some(text) = user.profile_image_url {
-        Some(text.parse().context(error::UrlLoad { text })?)
-      } else {
-        None
-      };
-
       return Ok(Some(User {
         id: u64::load(user.id).unwrap_infallible(),
         discord_id: UserId::load(user.discord_id).unwrap_infallible(),
         welcomed: user.welcomed,
         bio: user.bio,
-        profile_image_url,
         prompt_message,
       }));
     }
@@ -105,8 +98,6 @@ impl Db {
         welcomed == TRUE
         AND
         bio IS NOT NULL
-        AND
-        profile_image_url IS NOT NULL
         AND
         discord_id != ?
         AND
@@ -176,7 +167,6 @@ impl Db {
       match action {
         Welcome => Self::welcome(&mut tx, user_id).await?,
         SetBio { text } => Self::set_bio(&mut tx, user_id, text).await?,
-        SetProfileImage { url } => Self::set_profile_image(&mut tx, user_id, url).await?,
         AcceptCandidate { id } => Self::respond_to_candidate(&mut tx, user_id, *id, true).await?,
         RejectCandidate { id } => Self::respond_to_candidate(&mut tx, user_id, *id, false).await?,
       }
@@ -297,25 +287,6 @@ impl Db {
     Ok(())
   }
 
-  async fn set_profile_image(
-    tx: &mut Transaction<'_>,
-    discord_id: UserId,
-    url: &Url,
-  ) -> Result<()> {
-    let discord_id = discord_id.store();
-    let url = url.as_str();
-
-    sqlx::query!(
-      "UPDATE users SET profile_image_url = ? where discord_id = ?",
-      url,
-      discord_id
-    )
-    .execute(tx)
-    .await?;
-
-    Ok(())
-  }
-
   #[cfg(test)]
   async fn user_count(&self) -> Result<u64> {
     #[allow(clippy::cast_sign_loss)]
@@ -348,7 +319,6 @@ impl Db {
         format!("New potential match:\n{}", Self::bio(tx, id).await?)
       },
       Bio => "Please enter a bio to show to other users.".into(),
-      ProfileImage => "Please upload a profile photo.".into(),
       Match { id } => format!(
         "You matched with <@{}>:\n{}\nSend them a message!",
         id,
@@ -417,19 +387,6 @@ impl Db {
     let update = Update {
       action:      Some(Action::SetBio {
         text: format!("User {}'s bio!", id),
-      }),
-      next_prompt: Prompt::ProfileImage,
-    };
-
-    let tx = self.prepare(id, &update).await.unwrap();
-
-    tx.commit(MessageId(200)).await.unwrap();
-
-    let update = Update {
-      action:      Some(Action::SetProfileImage {
-        url: format!("https://foo.example/user-{}.png", id)
-          .parse()
-          .unwrap(),
       }),
       next_prompt: Prompt::Quiescent,
     };
@@ -520,7 +477,6 @@ mod tests {
       prompt_message: None,
       welcomed: false,
       bio: None,
-      profile_image_url: None,
       discord_id,
     };
     assert_eq!(have, want);
@@ -544,7 +500,6 @@ mod tests {
       prompt_message: None,
       welcomed: false,
       bio: None,
-      profile_image_url: None,
       discord_id,
     };
     assert_eq!(have, want);
@@ -569,7 +524,6 @@ mod tests {
       welcomed: true,
       prompt_message: Some(prompt_message),
       bio: None,
-      profile_image_url: None,
       discord_id,
     };
     assert_eq!(have, want);
@@ -588,7 +542,6 @@ mod tests {
       prompt_message: None,
       welcomed: false,
       bio: None,
-      profile_image_url: None,
       discord_id,
     };
     assert_eq!(have, want);
@@ -615,53 +568,6 @@ mod tests {
       welcomed: false,
       prompt_message: Some(prompt_message),
       bio: Some("bio!".to_owned()),
-      profile_image_url: None,
-      discord_id,
-    };
-    assert_eq!(have, want);
-  }
-
-  #[tokio::test(flavor = "multi_thread")]
-  async fn set_profile_image_url() {
-    let context = TestContext::new().await;
-
-    let discord_id = UserId(100);
-    let message_id = MessageId(200);
-
-    let have = context.db.user(discord_id).await.unwrap();
-    let want = User {
-      id: 1,
-      prompt_message: None,
-      welcomed: false,
-      bio: None,
-      profile_image_url: None,
-      discord_id,
-    };
-    assert_eq!(have, want);
-
-    let prompt_message = PromptMessage {
-      prompt: Prompt::ProfileImage,
-      message_id,
-    };
-
-    let update = Update {
-      action:      Some(Action::SetProfileImage {
-        url: "https://www.google.com".parse().unwrap(),
-      }),
-      next_prompt: Prompt::ProfileImage,
-    };
-
-    let tx = context.db.prepare(have.discord_id, &update).await.unwrap();
-
-    tx.commit(message_id).await.unwrap();
-
-    let have = context.db.user(discord_id).await.unwrap();
-    let want = User {
-      id: 1,
-      welcomed: false,
-      prompt_message: Some(prompt_message),
-      bio: None,
-      profile_image_url: Some("https://www.google.com".parse().unwrap()),
       discord_id,
     };
     assert_eq!(have, want);

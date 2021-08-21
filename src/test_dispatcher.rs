@@ -340,25 +340,6 @@ impl TestDispatcher {
       .unwrap();
   }
 
-  pub(crate) async fn send_attachment(
-    &self,
-    test_user_id: &TestUserId,
-    filename: &str,
-    data: Vec<u8>,
-  ) {
-    rate_limit::wait().await;
-    let content = self.test_run_id.prefix_message(test_user_id, "");
-    self
-      .client()
-      .create_message(self.channel())
-      .content(&content)
-      .unwrap()
-      .files(&[(filename, &data)])
-      .exec()
-      .await
-      .unwrap();
-  }
-
   pub(crate) fn client(&self) -> &Client {
     self.cluster.config().http_client()
   }
