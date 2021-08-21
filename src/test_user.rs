@@ -2,17 +2,6 @@ use crate::common::*;
 
 use crate::test_bot::ErrorReceiver;
 
-#[cfg(test)]
-fn create_test_png() -> Vec<u8> {
-  use image::{DynamicImage, ImageBuffer, ImageOutputFormat, RgbImage};
-  let mut image: RgbImage = ImageBuffer::new(100, 100);
-  image.fill(0xFF);
-  let dynamic = DynamicImage::ImageRgb8(image);
-  let mut dst = Vec::new();
-  dynamic.write_to(&mut dst, ImageOutputFormat::Png).unwrap();
-  dst
-}
-
 #[derive(Debug)]
 pub(crate) struct TestUser {
   bot:             Bot,
@@ -45,13 +34,6 @@ impl TestUser {
 
   pub(crate) async fn send_reaction(&self, id: MessageId, emoji: Emoji) {
     self.test_dispatcher.send_reaction(id, emoji).await;
-  }
-
-  pub(crate) async fn send_attachment(&self, filename: &str, data: Vec<u8>) {
-    self
-      .test_dispatcher
-      .send_attachment(&self.id, filename, data)
-      .await;
   }
 
   pub(crate) async fn receive_with_timeout(
@@ -154,7 +136,5 @@ impl TestUser {
     self.send_reaction(id, Emoji::ThumbsUp).await;
     self.expect_prompt(Prompt::Bio).await;
     self.send_message(&format!("{}'s bio!", self.name())).await;
-    self.expect_prompt(Prompt::ProfileImage).await;
-    self.send_attachment("image.png", create_test_png()).await;
   }
 }

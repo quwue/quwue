@@ -9,7 +9,6 @@ pub enum Prompt {
   Bio,
   Candidate { id: UserId },
   Match { id: UserId },
-  ProfileImage,
   Quiescent,
   Welcome,
 }
@@ -19,7 +18,7 @@ impl Prompt {
     match self {
       Welcome => vec![ThumbsUp],
       Candidate { .. } => vec![ThumbsUp, ThumbsDown],
-      Bio | ProfileImage | Quiescent | Match { .. } => vec![],
+      Bio | Quiescent | Match { .. } => vec![],
     }
   }
 

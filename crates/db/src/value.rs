@@ -28,7 +28,7 @@ impl Value for Prompt {
 
   fn store(self) -> Self::Storage {
     let payload = match self {
-      Self::Bio | Self::ProfileImage | Self::Quiescent | Self::Welcome => None,
+      Self::Bio | Self::Quiescent | Self::Welcome => None,
       Self::Candidate { id } | Self::Match { id } => Some(id.store()),
     };
 
@@ -48,14 +48,12 @@ impl Value for Prompt {
       (Match, Some(id)) => Ok(Self::Match {
         id: UserId::load(id).unwrap_infallible(),
       }),
-      (ProfileImage, None) => Ok(Self::ProfileImage),
       (Quiescent, None) => Ok(Self::Quiescent),
       (Welcome, None) => Ok(Self::Welcome),
-      (Bio | ProfileImage | Quiescent | Welcome, Some(payload)) =>
-        Err(Error::PromptLoadSuperfluousPayload {
-          discriminant,
-          payload,
-        }),
+      (Bio | Quiescent | Welcome, Some(payload)) => Err(Error::PromptLoadSuperfluousPayload {
+        discriminant,
+        payload,
+      }),
       (Candidate | Match, None) => Err(Error::PromptLoadMissingPayload { discriminant }),
     }
   }

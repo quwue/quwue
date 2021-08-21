@@ -165,10 +165,6 @@ impl Bot {
   }
 
   async fn handle_message_create(&self, message: MessageCreate) -> Result<()> {
-    fn extract_image_url(message: &MessageCreate) -> Option<String> {
-      Some(message.attachments.first()?.url.clone())
-    }
-
     let (sender_id, user_id, content) = if let Some(test_id) = &self.test_id {
       match test_id.filter(message.content.as_str()) {
         Some(test_message) => (
@@ -186,13 +182,7 @@ impl Bot {
       )
     };
 
-    let response = if let Some(text) = extract_image_url(&message) {
-      info!("Processing image response: {}", text);
-      Response::image(text.parse().context(error::EmbedImageUrlParse { text })?)
-    } else {
-      info!("Processiong plain text message: {}", content);
-      Response::message(content)
-    };
+    let response = Response::message(content);
 
     let user = self.db.user(user_id).await?;
 
