@@ -50,11 +50,10 @@ impl Value for Prompt {
       }),
       (Quiescent, None) => Ok(Self::Quiescent),
       (Welcome, None) => Ok(Self::Welcome),
-      (Bio | Quiescent | Welcome, Some(payload)) =>
-        Err(Error::PromptLoadSuperfluousPayload {
-          discriminant,
-          payload,
-        }),
+      (Bio | Quiescent | Welcome, Some(payload)) => Err(Error::PromptLoadSuperfluousPayload {
+        discriminant,
+        payload,
+      }),
       (Candidate | Match, None) => Err(Error::PromptLoadMissingPayload { discriminant }),
     }
   }

@@ -2,11 +2,11 @@ use crate::common::*;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct User {
-  pub id:                u64,
-  pub discord_id:        UserId,
-  pub prompt_message:    Option<PromptMessage>,
-  pub welcomed:          bool,
-  pub bio:               Option<String>,
+  pub id:             u64,
+  pub discord_id:     UserId,
+  pub prompt_message: Option<PromptMessage>,
+  pub welcomed:       bool,
+  pub bio:            Option<String>,
 }
 
 impl User {
