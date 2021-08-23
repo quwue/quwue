@@ -245,7 +245,7 @@ impl Db {
       .map(|row| row.discriminant);
 
       if let Some(discriminant) = discriminant {
-        if prompt.cannot_interrupt(PromptDiscriminant::load(discriminant).expect("FIXME")) {
+        if prompt.cannot_interrupt(PromptDiscriminant::load(discriminant)?) {
           return Ok(None);
         }
       }
