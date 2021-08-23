@@ -167,7 +167,7 @@ fn multi_user_candidate_accept() {
 #[instrument]
 #[test]
 #[ignore]
-fn candidate__and_match_interrupts() {
+fn candidate_and_match_interrupts() {
   test(async {
     let mut bot = test_bot!().await;
     let mut a = bot.new_user().await;
