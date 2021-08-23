@@ -213,7 +213,39 @@ fn dont_interrupt_candidate_prompts_with_candidate_prompts() {
     b.expect_prompt(Prompt::Quiescent).await;
     a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
 
-    b.send_reaction(c_prompt_id, Emoji::ThumbsUp).await;
+    c.send_reaction(c_prompt_id, Emoji::ThumbsUp).await;
+
+    a.expect_nothing().await;
+  })
+}
+
+#[instrument]
+#[test]
+#[ignore]
+fn dont_interrupt_match_prompts_with_candidate_prompts() {
+  test(async {
+    let mut bot = test_bot!().await;
+    let mut a = bot.new_user().await;
+    let mut b = bot.new_user().await;
+    let mut c = bot.new_user().await;
+
+    a.setup().await;
+    a.expect_prompt(Prompt::Quiescent).await;
+
+    b.setup().await;
+    let b_prompt_id = b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
+
+    c.setup().await;
+    let c_prompt_id = c.expect_prompt(Prompt::Candidate { id: a.id() }).await;
+
+    b.send_reaction(b_prompt_id, Emoji::ThumbsUp).await;
+    b.expect_prompt(Prompt::Quiescent).await;
+    let a_prompt_id = a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
+    a.send_reaction(a_prompt_id, Emoji::ThumbsUp).await;
+    a.expect_prompt(Prompt::Match { id: b.id() }).await;
+    b.expect_prompt(Prompt::Match { id: a.id() }).await;
+
+    c.send_reaction(c_prompt_id, Emoji::ThumbsUp).await;
 
     a.expect_nothing().await;
   })

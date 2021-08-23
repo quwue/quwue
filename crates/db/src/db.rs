@@ -245,7 +245,9 @@ impl Db {
         .await?
         .map(|row| row.discriminant);
 
-        if discriminant == Some(PromptDiscriminant::Candidate.store()) {
+        if discriminant == Some(PromptDiscriminant::Candidate.store())
+          || discriminant == Some(PromptDiscriminant::Match.store())
+        {
           return Ok(None);
         }
 
