@@ -5,5 +5,5 @@ pub enum Action {
   Welcome,
   SetBio { text: String },
   AcceptCandidate { id: UserId },
-  RejectCandidate { id: UserId },
+  DeclineCandidate { id: UserId },
 }
