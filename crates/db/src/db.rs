@@ -232,13 +232,12 @@ impl Db {
 
       let discriminant = sqlx::query!(
         "SELECT
-        discriminant
-      FROM
-        prompts
-      WHERE
-        recipient_discord_id = ?
-      LIMIT 1
-      ",
+          discriminant
+        FROM
+          prompts
+        WHERE
+          recipient_discord_id = ?
+        LIMIT 1",
         candidate_id,
       )
       .fetch_optional(&mut tx)
@@ -246,7 +245,7 @@ impl Db {
       .map(|row| row.discriminant);
 
       if let Some(discriminant) = discriminant {
-        if prompt.is_lower_priority_than(PromptDiscriminant::load(discriminant).expect("FIXME")) {
+        if prompt.cannot_interrupt(PromptDiscriminant::load(discriminant).expect("FIXME")) {
           return Ok(None);
         }
       }

@@ -35,8 +35,8 @@ impl Prompt {
     self.into()
   }
 
-  pub fn is_lower_priority_than(self, discriminant: PromptDiscriminant) -> bool {
-    self.discriminant() < discriminant
+  pub fn cannot_interrupt(self, discriminant: PromptDiscriminant) -> bool {
+    self.discriminant() <= discriminant
   }
 }
 
