@@ -102,7 +102,7 @@ impl TestUser {
       .await;
 
     for emoji in prompt.reactions() {
-      assert_eq!(self.expect_reaction(emoji).await, id);
+      assert_eq!(self.expect_reaction(*emoji).await, id);
     }
 
     id

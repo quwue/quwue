@@ -245,7 +245,7 @@ impl Bot {
       .create_message(user_id, channel_id, &prompt_text)
       .await?;
 
-    for emoji in prompt.reactions() {
+    for emoji in prompt.reactions().iter().copied() {
       let reaction_type = emoji.into();
 
       rate_limit::wait().await;
@@ -286,7 +286,7 @@ impl Bot {
           .create_message(candidate_id, channel_id, &prompt_text)
           .await?;
 
-        for emoji in prompt.reactions() {
+        for emoji in prompt.reactions().iter().copied() {
           let reaction_type = emoji.into();
 
           rate_limit::wait().await;
