@@ -222,9 +222,35 @@ impl Db {
     };
 
     let prompt = match response {
-      Some(true) => Prompt::Match { id: user_id },
+      Some(true) => {
+        // don't send this match prompt if candidate_id has match prompt
+        Prompt::Match { id: user_id }
+      },
       Some(false) => return Ok(None),
-      None => Prompt::Candidate { id: user_id },
+      None => {
+        let candidate_id = candidate_id.store();
+
+        let discriminant = sqlx::query!(
+          "SELECT
+            discriminant
+          FROM
+            prompts
+          WHERE
+            recipient_discord_id = ?
+          LIMIT 1
+          ",
+          candidate_id,
+        )
+        .fetch_optional(&mut tx)
+        .await?
+        .map(|row| row.discriminant);
+
+        if discriminant == Some(PromptDiscriminant::Candidate.store()) {
+          return Ok(None);
+        }
+
+        Prompt::Candidate { id: user_id }
+      },
     };
 
     let update_tx = UpdateTx {
