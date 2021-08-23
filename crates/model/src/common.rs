@@ -1,7 +1,7 @@
 // dependencies
 pub(crate) use ::{
   num_enum::TryFromPrimitive,
-  strum::EnumDiscriminants,
+  strum::{EnumDiscriminants, EnumIter},
   twilight_http::request::channel::reaction::RequestReactionType,
   twilight_model::id::{EmojiId, UserId},
 };

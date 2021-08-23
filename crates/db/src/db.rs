@@ -227,6 +227,30 @@ impl Db {
       None => Prompt::Candidate { id: user_id },
     };
 
+    {
+      let candidate_id = candidate_id.store();
+
+      let discriminant = sqlx::query!(
+        "SELECT
+          discriminant
+        FROM
+          prompts
+        WHERE
+          recipient_discord_id = ?
+        LIMIT 1",
+        candidate_id,
+      )
+      .fetch_optional(&mut tx)
+      .await?
+      .map(|row| row.discriminant);
+
+      if let Some(discriminant) = discriminant {
+        if prompt.cannot_interrupt(PromptDiscriminant::load(discriminant)?) {
+          return Ok(None);
+        }
+      }
+    }
+
     let update_tx = UpdateTx {
       user_id: candidate_id,
       prompt,
@@ -362,7 +386,7 @@ impl Db {
       "INSERT OR REPLACE INTO responses
         (discord_id, candidate_id, response, dismissed)
       VALUES
-        (?, ?, ?, 0)",
+        (?, ?, ?, FALSE)",
       user_id,
       candidate_id,
       response
@@ -382,7 +406,7 @@ impl Db {
     let match_id = match_id.store();
 
     sqlx::query!(
-      "UPDATE responses SET dismissed = 1 WHERE discord_id = ? AND candidate_id = ?",
+      "UPDATE responses SET dismissed = TRUE WHERE discord_id = ? AND candidate_id = ?",
       user_id,
       match_id
     )
@@ -817,7 +841,7 @@ mod tests {
       "INSERT INTO responses
         (discord_id, candidate_id, response, dismissed)
       VALUES
-        (1, 100, 1, 0)",
+        (1, 100, TRUE, FALSE)",
     )
     .execute(&mut tx)
     .await
@@ -841,7 +865,7 @@ mod tests {
       "INSERT INTO responses
         (discord_id, candidate_id, response, dismissed)
       VALUES
-        (100, 1, 1, 0)",
+        (100, 1, TRUE, FALSE)",
     )
     .execute(&mut tx)
     .await
