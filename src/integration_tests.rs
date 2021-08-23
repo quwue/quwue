@@ -278,7 +278,7 @@ fn accept_candidate_with_message() {
 #[instrument]
 #[test]
 #[ignore]
-fn reject_candidate_with_no() {
+fn decline_candidate_with_no() {
   test(async {
     let mut bot = test_bot!().await;
     let mut a = bot.new_user().await;
@@ -300,7 +300,7 @@ fn reject_candidate_with_no() {
 #[instrument]
 #[test]
 #[ignore]
-fn reject_candidate_with_n() {
+fn decline_candidate_with_n() {
   test(async {
     let mut bot = test_bot!().await;
     let mut a = bot.new_user().await;
@@ -322,7 +322,7 @@ fn reject_candidate_with_n() {
 #[instrument]
 #[test]
 #[ignore]
-fn candidate_hidden_after_rejection() {
+fn candidate_hidden_after_declination() {
   test(async {
     let mut bot = test_bot!().await;
     let mut a = bot.new_user().await;

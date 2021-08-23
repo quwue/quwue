@@ -57,7 +57,7 @@ impl User {
         }),
       Candidate { id } => match content.to_lowercase().as_str() {
         "yes" | "y" => return Some(Action::AcceptCandidate { id }),
-        "no" | "n" => return Some(Action::RejectCandidate { id }),
+        "no" | "n" => return Some(Action::DeclineCandidate { id }),
         _ => {},
       },
       Match { id } =>
@@ -83,7 +83,7 @@ impl User {
         },
       Candidate { id } => match emoji {
         ThumbsUp => Some(Action::AcceptCandidate { id }),
-        ThumbsDown => Some(Action::RejectCandidate { id }),
+        ThumbsDown => Some(Action::DeclineCandidate { id }),
       },
       Match { id } =>
         if emoji == ThumbsUp {
