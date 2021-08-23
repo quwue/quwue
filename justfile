@@ -50,7 +50,7 @@ env:
 
 # install system development dependencies with homebrew
 install-dev-deps-homebrew:
-  brew tap "rhysd/actionlint" "https://github.com/rhysd/actionlint"
+  brew tap rhysd/actionlint https://github.com/rhysd/actionlint
   brew install actionlint shellcheck
 
 push remote: ci
