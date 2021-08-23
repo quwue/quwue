@@ -16,9 +16,8 @@ pub enum Prompt {
 impl Prompt {
   pub fn reactions(self) -> &'static [Emoji] {
     match self {
-      Welcome => &[ThumbsUp],
       Candidate { .. } => &[ThumbsUp, ThumbsDown],
-      Match { .. } => &[ThumbsUp],
+      Match { .. } | Welcome => &[ThumbsUp],
       Bio | Quiescent => &[],
     }
   }

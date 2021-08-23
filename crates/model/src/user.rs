@@ -60,10 +60,10 @@ impl User {
         "no" | "n" => return Some(Action::RejectCandidate { id }),
         _ => {},
       },
-      Match { id } => match content.to_lowercase().as_str() {
-        "ok" => return Some(Action::DismissMatch { id }),
-        _ => {},
-      },
+      Match { id } =>
+        if content.to_lowercase() == "ok" {
+          return Some(Action::DismissMatch { id });
+        },
       Quiescent => {},
     }
 
@@ -85,10 +85,12 @@ impl User {
         ThumbsUp => Some(Action::AcceptCandidate { id }),
         ThumbsDown => Some(Action::RejectCandidate { id }),
       },
-      Match { id } => match emoji {
-        ThumbsUp => Some(Action::DismissMatch { id }),
-        _ => None,
-      },
+      Match { id } =>
+        if emoji == ThumbsUp {
+          Some(Action::DismissMatch { id })
+        } else {
+          None
+        },
       Quiescent | Bio => None,
     }
   }
