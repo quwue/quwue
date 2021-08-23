@@ -141,6 +141,8 @@ impl Db {
         AND
         response
         AND
+        NOT dismissed
+        AND
         EXISTS (
           SELECT * FROM responses
           WHERE
@@ -169,6 +171,7 @@ impl Db {
         SetBio { text } => Self::set_bio(&mut tx, user_id, text).await?,
         AcceptCandidate { id } => Self::respond_to_candidate(&mut tx, user_id, *id, true).await?,
         RejectCandidate { id } => Self::respond_to_candidate(&mut tx, user_id, *id, false).await?,
+        DismissMatch { id } => Self::dismiss_match(&mut tx, user_id, *id).await?,
       }
     }
 
@@ -320,9 +323,13 @@ impl Db {
       },
       Bio => "Please enter a bio to show to other users.".into(),
       Match { id } => format!(
-        "You matched with <@{}>:\n{}\nSend them a message!",
+        concat!(
+          "You matched with <@{}>:\n{}\nSend them a message!\n",
+          "React with {} or type `ok` to continue.",
+        ),
         id,
         Self::bio(tx, id).await?,
+        Emoji::ThumbsUp.markup()
       ),
     };
 
@@ -353,12 +360,31 @@ impl Db {
 
     sqlx::query!(
       "INSERT OR REPLACE INTO responses
-        (discord_id, candidate_id, response)
+        (discord_id, candidate_id, response, dismissed)
       VALUES
-        (?, ?, ?)",
+        (?, ?, ?, 0)",
       user_id,
       candidate_id,
       response
+    )
+    .execute(tx)
+    .await?;
+
+    Ok(())
+  }
+
+  async fn dismiss_match(
+    tx: &mut Transaction<'_>,
+    user_id: UserId,
+    match_id: UserId,
+  ) -> Result<()> {
+    let user_id = user_id.store();
+    let match_id = match_id.store();
+
+    sqlx::query!(
+      "UPDATE responses SET dismissed = 1 WHERE discord_id = ? AND candidate_id = ?",
+      user_id,
+      match_id
     )
     .execute(tx)
     .await?;
@@ -789,9 +815,9 @@ mod tests {
 
     let error = sqlx::query!(
       "INSERT INTO responses
-        (discord_id, candidate_id, response)
+        (discord_id, candidate_id, response, dismissed)
       VALUES
-        (1, 100, 1)",
+        (1, 100, 1, 0)",
     )
     .execute(&mut tx)
     .await
@@ -813,9 +839,9 @@ mod tests {
 
     let error = sqlx::query!(
       "INSERT INTO responses
-        (discord_id, candidate_id, response)
+        (discord_id, candidate_id, response, dismissed)
       VALUES
-        (100, 1, 1)",
+        (100, 1, 1, 0)",
     )
     .execute(&mut tx)
     .await

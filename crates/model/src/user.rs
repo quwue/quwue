@@ -60,7 +60,11 @@ impl User {
         "no" | "n" => return Some(Action::RejectCandidate { id }),
         _ => {},
       },
-      Quiescent | Match { .. } => {},
+      Match { id } =>
+        if content.to_lowercase() == "ok" {
+          return Some(Action::DismissMatch { id });
+        },
+      Quiescent => {},
     }
 
     None
@@ -81,7 +85,13 @@ impl User {
         ThumbsUp => Some(Action::AcceptCandidate { id }),
         ThumbsDown => Some(Action::RejectCandidate { id }),
       },
-      Quiescent | Bio | Match { .. } => None,
+      Match { id } =>
+        if emoji == ThumbsUp {
+          Some(Action::DismissMatch { id })
+        } else {
+          None
+        },
+      Quiescent | Bio => None,
     }
   }
 
