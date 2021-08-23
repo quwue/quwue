@@ -397,19 +397,9 @@ fn dont_show_candidates_with_match_prompt() {
     a.send_reaction(id, Emoji::ThumbsUp).await;
 
     let prompt = Prompt::Match { id: b.id() };
-    assert!(bot
-      .db()
-      .prompt_text_outside_update_transaction(prompt)
-      .await
-      .contains("b's bio!"));
     a.expect_prompt(prompt).await;
 
     let prompt = Prompt::Match { id: a.id() };
-    assert!(bot
-      .db()
-      .prompt_text_outside_update_transaction(prompt)
-      .await
-      .contains("a's bio!"));
     b.expect_prompt(prompt).await;
 
     c.setup().await;
