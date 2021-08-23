@@ -14,12 +14,12 @@ pub enum Prompt {
 }
 
 impl Prompt {
-  pub fn reactions(self) -> Vec<Emoji> {
+  pub fn reactions(self) -> &'static [Emoji] {
     match self {
-      Welcome => vec![ThumbsUp],
-      Candidate { .. } => vec![ThumbsUp, ThumbsDown],
-      Match { .. } => vec![ThumbsUp],
-      Bio | Quiescent => vec![],
+      Welcome => &[ThumbsUp],
+      Candidate { .. } => &[ThumbsUp, ThumbsDown],
+      Match { .. } => &[ThumbsUp],
+      Bio | Quiescent => &[],
     }
   }
 
