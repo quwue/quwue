@@ -221,6 +221,18 @@ fn match_prompt() {
       .await
       .contains("a's bio!"));
     b.expect_prompt(prompt).await;
+
+    a.send_message("foo").await;
+    a.expect_prompt(Prompt::Match { id: b.id() }).await;
+
+    a.send_message("ok").await;
+    a.expect_prompt(Prompt::Quiescent).await;
+
+    b.send_message("foo").await;
+    let b_prompt_id = b.expect_prompt(Prompt::Match { id: a.id() }).await;
+
+    b.send_reaction(b_prompt_id, Emoji::ThumbsUp).await;
+    b.expect_prompt(Prompt::Quiescent).await;
   })
 }
 
