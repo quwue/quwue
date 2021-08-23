@@ -207,12 +207,12 @@ impl Db {
 
       sqlx::query!(
         "SELECT
-        response
-      FROM
-        responses
-      WHERE
-        discord_id = ? AND candidate_id = ?
-      LIMIT 1",
+          response
+        FROM
+          responses
+        WHERE
+          discord_id = ? AND candidate_id = ?
+        LIMIT 1",
         candidate_id,
         user_id,
       )

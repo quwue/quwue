@@ -167,7 +167,7 @@ fn multi_user_candidate_accept() {
 #[instrument]
 #[test]
 #[ignore]
-fn candidate_interrupt() {
+fn candidate__and_match_interrupts() {
   test(async {
     let mut bot = test_bot!().await;
     let mut a = bot.new_user().await;
@@ -180,8 +180,13 @@ fn candidate_interrupt() {
 
     let id = b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
     b.send_reaction(id, Emoji::ThumbsUp).await;
+    b.expect_prompt(Prompt::Quiescent).await;
 
-    a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
+    let id = a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
+    a.send_reaction(id, Emoji::ThumbsUp).await;
+    a.expect_prompt(Prompt::Match { id: b.id() }).await;
+
+    b.expect_prompt(Prompt::Match { id: a.id() }).await;
   })
 }
 
