@@ -6,5 +6,5 @@ pub enum Action {
   DismissMatch { id: UserId },
   RejectCandidate { id: UserId },
   SetBio { text: String },
-  Welcome
+  Welcome,
 }

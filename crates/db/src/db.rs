@@ -37,7 +37,7 @@ impl Db {
 
       let prompt_message = match prompt {
         Some(row) => Some(PromptMessage {
-          prompt: Prompt::load((row.discriminant, row.payload))?,
+          prompt:     Prompt::load((row.discriminant, row.payload))?,
           message_id: MessageId::load(row.message_id).unwrap_infallible(),
         }),
         None => None,
@@ -320,7 +320,7 @@ impl Db {
         .into(),
       Candidate { id } => {
         format!("New potential match:\n{}", Self::bio(tx, id).await?)
-      }
+      },
       Bio => "Please enter a bio to show to other users.".into(),
       Match { id } => format!(
         concat!(
@@ -402,7 +402,7 @@ impl Db {
     self.user(id).await.unwrap();
 
     let update = Update {
-      action: Some(Action::Welcome),
+      action:      Some(Action::Welcome),
       next_prompt: Prompt::Bio,
     };
 
@@ -411,7 +411,7 @@ impl Db {
     tx.commit(MessageId(200)).await.unwrap();
 
     let update = Update {
-      action: Some(Action::SetBio {
+      action:      Some(Action::SetBio {
         text: format!("User {}'s bio!", id),
       }),
       next_prompt: Prompt::Quiescent,
@@ -446,8 +446,8 @@ mod tests {
   use super::*;
 
   struct TestContext {
-    tmpdir: TempDir,
-    db: Db,
+    tmpdir:  TempDir,
+    db:      Db,
     db_path: PathBuf,
   }
 
@@ -536,7 +536,7 @@ mod tests {
     };
 
     let update = Update {
-      action: Some(Action::Welcome),
+      action:      Some(Action::Welcome),
       next_prompt: Prompt::Welcome,
     };
 
@@ -578,7 +578,7 @@ mod tests {
     };
 
     let update = Update {
-      action: Some(Action::SetBio {
+      action:      Some(Action::SetBio {
         text: "bio!".to_owned(),
       }),
       next_prompt: Prompt::Bio,
@@ -628,7 +628,7 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
+      action:      Some(Action::AcceptCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -651,7 +651,7 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::RejectCandidate { id: a }),
+      action:      Some(Action::RejectCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -674,7 +674,7 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::RejectCandidate { id: a }),
+      action:      Some(Action::RejectCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -685,7 +685,7 @@ mod tests {
     tx.commit(MessageId(201)).await.unwrap();
 
     let update = Update {
-      action: None,
+      action:      None,
       next_prompt: Prompt::Quiescent,
     };
 
@@ -708,7 +708,7 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
+      action:      Some(Action::AcceptCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -719,7 +719,7 @@ mod tests {
     tx.commit(MessageId(201)).await.unwrap();
 
     let update = Update {
-      action: None,
+      action:      None,
       next_prompt: Prompt::Quiescent,
     };
 
@@ -742,7 +742,7 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
+      action:      Some(Action::AcceptCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -755,7 +755,7 @@ mod tests {
     assert!(context.db.response(b, a).await);
 
     let update = Update {
-      action: Some(Action::RejectCandidate { id: a }),
+      action:      Some(Action::RejectCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -782,7 +782,7 @@ mod tests {
       .await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
+      action:      Some(Action::AcceptCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -793,7 +793,7 @@ mod tests {
     tx.commit(MessageId(201)).await.unwrap();
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: b }),
+      action:      Some(Action::AcceptCandidate { id: b }),
       next_prompt: Prompt::Quiescent,
     };
 
