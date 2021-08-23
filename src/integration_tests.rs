@@ -472,3 +472,31 @@ fn dont_show_candidates_with_match_prompt() {
     c.expect_prompt(Prompt::Quiescent).await;
   })
 }
+
+#[instrument]
+#[test]
+#[ignore]
+fn dont_show_users_as_candidates_when_they_have_pending_match_prompts() {
+  test(async {
+    let mut bot = test_bot!().await;
+    let mut a = bot.new_user().await;
+    let mut b = bot.new_user().await;
+    let mut c = bot.new_user().await;
+
+    a.setup().await;
+    a.expect_prompt(Prompt::Quiescent).await;
+
+    b.setup().await;
+    b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
+    b.send_message("yes").await;
+    b.expect_prompt(Prompt::Quiescent).await;
+
+    a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
+    a.send_message("yes").await;
+    a.expect_prompt(Prompt::Match { id: b.id() }).await;
+    b.expect_prompt(Prompt::Match { id: a.id() }).await;
+
+    c.setup().await;
+    c.expect_prompt(Prompt::Quiescent).await;
+  })
+}
