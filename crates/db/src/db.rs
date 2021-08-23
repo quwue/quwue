@@ -170,7 +170,7 @@ impl Db {
         Welcome => Self::welcome(&mut tx, user_id).await?,
         SetBio { text } => Self::set_bio(&mut tx, user_id, text).await?,
         AcceptCandidate { id } => Self::respond_to_candidate(&mut tx, user_id, *id, true).await?,
-        RejectCandidate { id } => Self::respond_to_candidate(&mut tx, user_id, *id, false).await?,
+        DeclineCandidate { id } => Self::respond_to_candidate(&mut tx, user_id, *id, false).await?,
         DismissMatch { id } => Self::dismiss_match(&mut tx, user_id, *id).await?,
       }
     }
@@ -638,7 +638,7 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread")]
-  async fn filter_out_rejected_candidates() {
+  async fn filter_out_declined_candidates() {
     let context = TestContext::new().await;
 
     let a = UserId(100);
@@ -651,7 +651,7 @@ mod tests {
       .await;
 
     let update = Update {
-      action:      Some(Action::RejectCandidate { id: a }),
+      action:      Some(Action::DeclineCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -661,7 +661,7 @@ mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread")]
-  async fn filter_out_candidates_that_have_rejected_user() {
+  async fn filter_out_candidates_that_have_declined_user() {
     let context = TestContext::new().await;
 
     let a = UserId(100);
@@ -674,7 +674,7 @@ mod tests {
       .await;
 
     let update = Update {
-      action:      Some(Action::RejectCandidate { id: a }),
+      action:      Some(Action::DeclineCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -755,7 +755,7 @@ mod tests {
     assert!(context.db.response(b, a).await);
 
     let update = Update {
-      action:      Some(Action::RejectCandidate { id: a }),
+      action:      Some(Action::DeclineCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
