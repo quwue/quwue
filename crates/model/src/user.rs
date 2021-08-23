@@ -2,11 +2,11 @@ use crate::common::*;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct User {
-  pub id:             u64,
-  pub discord_id:     UserId,
+  pub id: u64,
+  pub discord_id: UserId,
   pub prompt_message: Option<PromptMessage>,
-  pub welcomed:       bool,
-  pub bio:            Option<String>,
+  pub welcomed: bool,
+  pub bio: Option<String>,
 }
 
 impl User {
@@ -16,7 +16,7 @@ impl User {
     } else {
       return Update {
         next_prompt: Prompt::Welcome,
-        action:      None,
+        action: None,
       };
     };
 
@@ -30,14 +30,14 @@ impl User {
       action
     } else {
       return Update {
-        action:      None,
+        action: None,
         next_prompt: prompt,
       };
     };
 
     Update {
       next_prompt: self.next_prompt(&action),
-      action:      Some(action),
+      action: Some(action),
     }
   }
 
@@ -47,20 +47,26 @@ impl User {
     let content = content.trim();
 
     match prompt {
-      Welcome =>
+      Welcome => {
         if content.to_lowercase() == "ok" {
           return Some(Action::Welcome);
-        },
-      Bio =>
+        }
+      }
+      Bio => {
         return Some(Action::SetBio {
           text: content.to_owned(),
-        }),
+        })
+      }
       Candidate { id } => match content.to_lowercase().as_str() {
         "yes" | "y" => return Some(Action::AcceptCandidate { id }),
         "no" | "n" => return Some(Action::RejectCandidate { id }),
-        _ => {},
+        _ => {}
       },
-      Quiescent | Match { .. } => {},
+      Match { id } => match content.to_lowercase().as_str() {
+        "ok" => return Some(Action::DismissMatch { id }),
+        _ => {}
+      },
+      Quiescent => {}
     }
 
     None
@@ -71,17 +77,24 @@ impl User {
     use Prompt::*;
 
     match prompt {
-      Welcome =>
+      Welcome => {
         if emoji == ThumbsUp {
           Some(Action::Welcome)
         } else {
           None
-        },
+        }
+      }
       Candidate { id } => match emoji {
         ThumbsUp => Some(Action::AcceptCandidate { id }),
         ThumbsDown => Some(Action::RejectCandidate { id }),
       },
-      Quiescent | Bio | Match { .. } => None,
+      Match { id } => {
+        match emoji {
+          ThumbsUp => Some(Action::DismissMatch { id }),
+          _ => None
+        }
+      },
+      Quiescent | Bio => None,
     }
   }
 

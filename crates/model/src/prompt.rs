@@ -18,7 +18,8 @@ impl Prompt {
     match self {
       Welcome => vec![ThumbsUp],
       Candidate { .. } => vec![ThumbsUp, ThumbsDown],
-      Bio | Quiescent | Match { .. } => vec![],
+      Match { .. } => vec![ThumbsUp],
+      Bio | Quiescent => vec![],
     }
   }
 
