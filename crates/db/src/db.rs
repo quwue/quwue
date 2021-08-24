@@ -922,6 +922,11 @@ mod tests {
     let a = context.db.create_user(Prompt::Quiescent).await;
     let b = context.db.create_user(Prompt::Candidate { id: a }).await;
     let c = context.db.create_user(Prompt::Candidate { id: a }).await;
+    context.db.set_prompt(b, Prompt::Quiescent).await;
+    context.db.set_prompt(c, Prompt::Quiescent).await;
+
+    let mut tx = context.db.pool.begin().await.unwrap();
+    assert_eq!(Db::get_candidate(&mut tx, a).await.unwrap(), Some(b));
 
     let update = Update {
       action:      Some(Action::AcceptCandidate { id: a }),
@@ -935,8 +940,6 @@ mod tests {
       .commit(MessageId(0))
       .await
       .unwrap();
-
-    context.db.set_prompt(b, Prompt::Quiescent).await;
     context.db.set_prompt(c, Prompt::Quiescent).await;
 
     let mut tx = context.db.pool.begin().await.unwrap();
