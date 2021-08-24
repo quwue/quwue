@@ -422,7 +422,24 @@ impl Db {
   }
 
   #[cfg(test)]
-  async fn create_profile(&self, id: UserId, expected_prompt: Prompt) {
+  async fn create_user(&self, expected_prompt: Prompt) -> UserId {
+    let id = sqlx::query!(
+      "SELECT
+        discord_id
+      FROM
+        users
+      ORDER BY
+        discord_id DESC
+      "
+    )
+    .fetch_optional(&self.pool)
+    .await
+    .unwrap()
+    .map(|row| row.discord_id + 1)
+    .unwrap_or(0);
+
+    let id = UserId(u64::load(id).unwrap());
+
     self.user(id).await.unwrap();
 
     let update = Update {
@@ -446,6 +463,8 @@ impl Db {
     assert_eq!(tx.prompt(), expected_prompt);
 
     tx.commit(MessageId(200)).await.unwrap();
+
+    id
   }
 
   #[cfg(test)]
@@ -501,8 +520,7 @@ mod tests {
 
     assert_eq!(db.user_count().await.unwrap(), 0);
 
-    let a = UserId(100);
-    db.create_profile(a, Prompt::Quiescent).await;
+    db.create_user(Prompt::Quiescent).await;
 
     assert_eq!(db.user_count().await.unwrap(), 1);
 
@@ -627,29 +645,16 @@ mod tests {
   async fn expect_candidate() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    context.db.create_user(Prompt::Candidate { id: a }).await;
   }
 
   #[tokio::test(flavor = "multi_thread")]
   async fn filter_out_accepted_candidates() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::AcceptCandidate { id: a }),
@@ -665,14 +670,8 @@ mod tests {
   async fn filter_out_declined_candidates() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::DeclineCandidate { id: a }),
@@ -688,14 +687,8 @@ mod tests {
   async fn filter_out_candidates_that_have_declined_user() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::DeclineCandidate { id: a }),
@@ -722,14 +715,8 @@ mod tests {
   async fn dont_filter_candidates_that_have_accepted_user() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::AcceptCandidate { id: a }),
@@ -756,14 +743,8 @@ mod tests {
   async fn allow_multiple_responses() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::AcceptCandidate { id: a }),
@@ -796,14 +777,8 @@ mod tests {
   async fn show_match_prompt_after_mutual_acceptance() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::AcceptCandidate { id: a }),
@@ -832,8 +807,7 @@ mod tests {
   async fn inserting_responses_from_non_existant_users_is_an_error() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    context.db.create_profile(a, Prompt::Quiescent).await;
+    context.db.create_user(Prompt::Quiescent).await;
 
     let mut tx = context.db.pool.begin().await.unwrap();
 
@@ -856,8 +830,7 @@ mod tests {
   async fn inserting_responses_to_non_existant_users_is_an_error() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    context.db.create_profile(a, Prompt::Quiescent).await;
+    context.db.create_user(Prompt::Quiescent).await;
 
     let mut tx = context.db.pool.begin().await.unwrap();
 
