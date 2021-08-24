@@ -480,8 +480,7 @@ impl Db {
     .fetch_optional(&self.pool)
     .await
     .unwrap()
-    .map(|row| row.discord_id + 1)
-    .unwrap_or(0);
+    .map_or(0, |row| row.discord_id + 1);
 
     let id = UserId(u64::load(id).unwrap());
 
