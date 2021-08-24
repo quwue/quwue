@@ -89,7 +89,51 @@ impl Db {
 
     let quiescent_discriminant = PromptDiscriminant::Quiescent.store();
 
-    let row = sqlx::query!(
+    // This should be a single SELECT with an OUTER JOIN, instead of two SELECTS,
+    // but that seems to break the sqlx query parser:
+    // https://github.com/launchbadge/sqlx/issues/1249
+    let candidate = sqlx::query!(
+      "SELECT
+        discord_id
+      FROM
+        users AS potential_candidate
+      WHERE
+        welcomed == TRUE
+        AND
+        bio IS NOT NULL
+        AND
+        discord_id != ?
+        AND
+        NOT EXISTS (
+          SELECT * FROM responses
+          WHERE discord_id == ? AND candidate_id == potential_candidate.discord_id
+        )
+        AND
+        EXISTS (
+          SELECT * FROM responses
+          WHERE discord_id == potential_candidate.discord_id AND candidate_id == ? AND response
+        )
+        AND
+        EXISTS (
+          SELECT * FROM prompts
+          WHERE
+            recipient_discord_id = potential_candidate.discord_id AND discriminant == ?
+        )
+      LIMIT 1",
+      discord_id,
+      discord_id,
+      discord_id,
+      quiescent_discriminant,
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    .map(|row| UserId::load(row.discord_id).unwrap_infallible());
+
+    if let Some(candidate) = candidate {
+      return Ok(Some(candidate));
+    }
+
+    let candidate = sqlx::query!(
       "SELECT
         discord_id
       FROM
@@ -123,9 +167,10 @@ impl Db {
       quiescent_discriminant,
     )
     .fetch_optional(tx)
-    .await?;
+    .await?
+    .map(|row| UserId::load(row.discord_id).unwrap_infallible());
 
-    Ok(row.map(|row| UserId::load(row.discord_id).unwrap_infallible()))
+    Ok(candidate)
   }
 
   async fn get_match<'a>(tx: &mut Transaction<'a>, discord_id: UserId) -> Result<Option<UserId>> {
@@ -422,7 +467,23 @@ impl Db {
   }
 
   #[cfg(test)]
-  async fn create_profile(&self, id: UserId, expected_prompt: Prompt) {
+  async fn create_user(&self, expected_prompt: Prompt) -> UserId {
+    let id = sqlx::query!(
+      "SELECT
+        discord_id
+      FROM
+        users
+      ORDER BY
+        discord_id DESC
+      "
+    )
+    .fetch_optional(&self.pool)
+    .await
+    .unwrap()
+    .map_or(0, |row| row.discord_id + 1);
+
+    let id = UserId(u64::load(id).unwrap());
+
     self.user(id).await.unwrap();
 
     let update = Update {
@@ -446,6 +507,29 @@ impl Db {
     assert_eq!(tx.prompt(), expected_prompt);
 
     tx.commit(MessageId(200)).await.unwrap();
+
+    id
+  }
+
+  #[cfg(test)]
+  async fn set_prompt(&self, recipient_id: UserId, prompt: Prompt) {
+    let (discriminant, payload) = prompt.store();
+    let message_id = MessageId(0).store();
+    let recipient_id = recipient_id.store();
+
+    sqlx::query!(
+      "INSERT OR REPLACE INTO prompts
+        (discriminant, payload, message_id, recipient_discord_id)
+      VALUES
+        (?, ?, ?, ?)",
+      discriminant,
+      payload,
+      message_id,
+      recipient_id
+    )
+    .execute(&self.pool)
+    .await
+    .unwrap();
   }
 
   #[cfg(test)]
@@ -501,8 +585,7 @@ mod tests {
 
     assert_eq!(db.user_count().await.unwrap(), 0);
 
-    let a = UserId(100);
-    db.create_profile(a, Prompt::Quiescent).await;
+    db.create_user(Prompt::Quiescent).await;
 
     assert_eq!(db.user_count().await.unwrap(), 1);
 
@@ -627,29 +710,16 @@ mod tests {
   async fn expect_candidate() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    context.db.create_user(Prompt::Candidate { id: a }).await;
   }
 
   #[tokio::test(flavor = "multi_thread")]
   async fn filter_out_accepted_candidates() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::AcceptCandidate { id: a }),
@@ -665,14 +735,8 @@ mod tests {
   async fn filter_out_declined_candidates() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::DeclineCandidate { id: a }),
@@ -688,14 +752,8 @@ mod tests {
   async fn filter_out_candidates_that_have_declined_user() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::DeclineCandidate { id: a }),
@@ -722,14 +780,8 @@ mod tests {
   async fn dont_filter_candidates_that_have_accepted_user() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::AcceptCandidate { id: a }),
@@ -756,14 +808,8 @@ mod tests {
   async fn allow_multiple_responses() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::AcceptCandidate { id: a }),
@@ -796,14 +842,8 @@ mod tests {
   async fn show_match_prompt_after_mutual_acceptance() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    let b = UserId(101);
-
-    context.db.create_profile(a, Prompt::Quiescent).await;
-    context
-      .db
-      .create_profile(b, Prompt::Candidate { id: a })
-      .await;
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
       action:      Some(Action::AcceptCandidate { id: a }),
@@ -832,8 +872,7 @@ mod tests {
   async fn inserting_responses_from_non_existant_users_is_an_error() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    context.db.create_profile(a, Prompt::Quiescent).await;
+    context.db.create_user(Prompt::Quiescent).await;
 
     let mut tx = context.db.pool.begin().await.unwrap();
 
@@ -856,8 +895,7 @@ mod tests {
   async fn inserting_responses_to_non_existant_users_is_an_error() {
     let context = TestContext::new().await;
 
-    let a = UserId(100);
-    context.db.create_profile(a, Prompt::Quiescent).await;
+    context.db.create_user(Prompt::Quiescent).await;
 
     let mut tx = context.db.pool.begin().await.unwrap();
 
@@ -874,5 +912,36 @@ mod tests {
     guard_unwrap!(let sqlx::Error::Database(error) = error);
 
     assert_eq!(error.message(), "FOREIGN KEY constraint failed");
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn candidate_function_prioritizes_users_who_have_accepted() {
+    let context = TestContext::new().await;
+
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
+    let c = context.db.create_user(Prompt::Candidate { id: a }).await;
+    context.db.set_prompt(b, Prompt::Quiescent).await;
+    context.db.set_prompt(c, Prompt::Quiescent).await;
+
+    let mut tx = context.db.pool.begin().await.unwrap();
+    assert_eq!(Db::get_candidate(&mut tx, a).await.unwrap(), Some(b));
+
+    let update = Update {
+      action:      Some(Action::AcceptCandidate { id: a }),
+      next_prompt: Prompt::Quiescent,
+    };
+    context
+      .db
+      .prepare(c, &update)
+      .await
+      .unwrap()
+      .commit(MessageId(0))
+      .await
+      .unwrap();
+    context.db.set_prompt(c, Prompt::Quiescent).await;
+
+    let mut tx = context.db.pool.begin().await.unwrap();
+    assert_eq!(Db::get_candidate(&mut tx, a).await.unwrap(), Some(c));
   }
 }
