@@ -89,7 +89,48 @@ impl Db {
 
     let quiescent_discriminant = PromptDiscriminant::Quiescent.store();
 
-    let row = sqlx::query!(
+    let candidate = sqlx::query!(
+      "SELECT
+        discord_id
+      FROM
+        users AS potential_candidate
+      WHERE
+        welcomed == TRUE
+        AND
+        bio IS NOT NULL
+        AND
+        discord_id != ?
+        AND
+        NOT EXISTS (
+          SELECT * FROM responses
+          WHERE discord_id == ? AND candidate_id == potential_candidate.discord_id
+        )
+        AND
+        EXISTS (
+          SELECT * FROM responses
+          WHERE discord_id == potential_candidate.discord_id AND candidate_id == ? AND response
+        )
+        AND
+        EXISTS (
+          SELECT * FROM prompts
+          WHERE
+            recipient_discord_id = potential_candidate.discord_id AND discriminant == ?
+        )
+      LIMIT 1",
+      discord_id,
+      discord_id,
+      discord_id,
+      quiescent_discriminant,
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    .map(|row| UserId::load(row.discord_id).unwrap_infallible());
+
+    if let Some(candidate) = candidate {
+      return Ok(Some(candidate));
+    }
+
+    let candidate = sqlx::query!(
       "SELECT
         discord_id
       FROM
@@ -123,9 +164,10 @@ impl Db {
       quiescent_discriminant,
     )
     .fetch_optional(tx)
-    .await?;
+    .await?
+    .map(|row| UserId::load(row.discord_id).unwrap_infallible());
 
-    Ok(row.map(|row| UserId::load(row.discord_id).unwrap_infallible()))
+    Ok(candidate)
   }
 
   async fn get_match<'a>(tx: &mut Transaction<'a>, discord_id: UserId) -> Result<Option<UserId>> {
