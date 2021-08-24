@@ -468,6 +468,27 @@ impl Db {
   }
 
   #[cfg(test)]
+  async fn set_prompt(&self, recipient_id: UserId, prompt: Prompt) {
+    let (discriminant, payload) = prompt.store();
+    let message_id = MessageId(0).store();
+    let recipient_id = recipient_id.store();
+
+    sqlx::query!(
+      "INSERT OR REPLACE INTO prompts
+        (discriminant, payload, message_id, recipient_discord_id)
+      VALUES
+        (?, ?, ?, ?)",
+      discriminant,
+      payload,
+      message_id,
+      recipient_id
+    )
+    .execute(&self.pool)
+    .await
+    .unwrap();
+  }
+
+  #[cfg(test)]
   async fn response(&self, user: UserId, candidate: UserId) -> bool {
     let user = user.store();
     let candidate = candidate.store();
@@ -847,5 +868,33 @@ mod tests {
     guard_unwrap!(let sqlx::Error::Database(error) = error);
 
     assert_eq!(error.message(), "FOREIGN KEY constraint failed");
+  }
+
+  #[tokio::test(flavor = "multi_thread")]
+  async fn candidate_function_prioritizes_users_who_have_accepted() {
+    let context = TestContext::new().await;
+
+    let a = context.db.create_user(Prompt::Quiescent).await;
+    let b = context.db.create_user(Prompt::Candidate { id: a }).await;
+    let c = context.db.create_user(Prompt::Candidate { id: a }).await;
+
+    let update = Update {
+      action:      Some(Action::AcceptCandidate { id: a }),
+      next_prompt: Prompt::Quiescent,
+    };
+    context
+      .db
+      .prepare(c, &update)
+      .await
+      .unwrap()
+      .commit(MessageId(0))
+      .await
+      .unwrap();
+
+    context.db.set_prompt(b, Prompt::Quiescent).await;
+    context.db.set_prompt(c, Prompt::Quiescent).await;
+
+    let mut tx = context.db.pool.begin().await.unwrap();
+    assert_eq!(Db::get_candidate(&mut tx, a).await.unwrap(), Some(c));
   }
 }
