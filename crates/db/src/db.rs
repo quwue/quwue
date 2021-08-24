@@ -89,6 +89,9 @@ impl Db {
 
     let quiescent_discriminant = PromptDiscriminant::Quiescent.store();
 
+    // This should be a single SELECT with an OUTER JOIN, instead of two SELECTS,
+    // but that seems to break the sqlx query parser:
+    // https://github.com/launchbadge/sqlx/issues/1249
     let candidate = sqlx::query!(
       "SELECT
         discord_id
