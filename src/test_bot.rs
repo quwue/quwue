@@ -21,7 +21,7 @@ pub(crate) struct TestBot {
   error:            ErrorReceiver,
   test_name:        String,
   next_user_number: u64,
-  pub bot:          Bot,
+  bot:              Bot,
   #[allow(unused)]
   tmpdir:           TempDir,
 }
@@ -73,5 +73,19 @@ impl TestBot {
 
   pub(crate) fn db(&self) -> &Db {
     self.bot.db()
+  }
+
+  pub(crate) async fn get_message(&self, message_id: MessageId) -> Message {
+    let channel_id = TestDispatcher::get_instance().await.channel();
+    self
+      .bot
+      .client()
+      .message(channel_id, message_id)
+      .exec()
+      .await
+      .unwrap()
+      .model()
+      .await
+      .unwrap()
   }
 }

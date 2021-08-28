@@ -516,19 +516,7 @@ fn show_avatar_in_candidate_and_match_prompt() {
     b.setup().await;
     let message_id = b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
 
-    let dispatcher = TestDispatcher::get_instance().await;
-
-    let embeds = bot
-      .bot
-      .client()
-      .message(dispatcher.channel.id, message_id)
-      .exec()
-      .await
-      .unwrap()
-      .model()
-      .await
-      .unwrap()
-      .embeds;
+    let embeds = bot.get_message(message_id).await.embeds;
 
     assert_eq!(embeds.len(), 1);
     assert!(embeds[0]
@@ -549,17 +537,7 @@ fn show_avatar_in_candidate_and_match_prompt() {
     a.expect_prompt(Prompt::Match { id: b.id() }).await;
     let message_id = b.expect_prompt(Prompt::Match { id: a.id() }).await;
 
-    let embeds = bot
-      .bot
-      .client()
-      .message(dispatcher.channel.id, message_id)
-      .exec()
-      .await
-      .unwrap()
-      .model()
-      .await
-      .unwrap()
-      .embeds;
+    let embeds = bot.get_message(message_id).await.embeds;
 
     assert_eq!(embeds.len(), 1);
     assert!(embeds[0]

@@ -17,12 +17,12 @@ pub(crate) struct Bot {
 
 #[derive(Debug)]
 pub(crate) struct Inner {
-  cache:       InMemoryCache,
-  pub cluster: Cluster,
-  db:          Db,
-  events:      Arc<Mutex<Events>>,
-  test_id:     Option<TestId>,
-  user:        twilight_model::user::User,
+  cache:   InMemoryCache,
+  cluster: Cluster,
+  db:      Db,
+  events:  Arc<Mutex<Events>>,
+  test_id: Option<TestId>,
+  user:    twilight_model::user::User,
 }
 
 impl Deref for Bot {

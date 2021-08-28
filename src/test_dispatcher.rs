@@ -4,7 +4,7 @@ type Channels = BTreeMap<TestUserId, mpsc::UnboundedSender<(MessageId, TestEvent
 
 #[derive(Debug)]
 pub(crate) struct TestDispatcher {
-  pub channel: TextChannel,
+  channel:     TextChannel,
   cluster:     Cluster,
   events:      Mutex<Events>,
   guild:       Guild,
