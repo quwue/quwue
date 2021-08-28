@@ -17,12 +17,12 @@ pub(crate) struct Bot {
 
 #[derive(Debug)]
 pub(crate) struct Inner {
-  cache:   InMemoryCache,
-  cluster: Cluster,
-  db:      Db,
-  events:  Arc<Mutex<Events>>,
+  cache: InMemoryCache,
+  pub cluster: Cluster,
+  db: Db,
+  events: Arc<Mutex<Events>>,
   test_id: Option<TestId>,
-  user:    discord::User,
+  user: discord::User,
 }
 
 impl Deref for Bot {
@@ -240,9 +240,24 @@ impl Bot {
 
     let prompt_text = Db::prompt_text(&mut tx.inner_transaction(), prompt).await?;
 
+    let avatar_url = if let Prompt::Candidate { id } | Prompt::Match { id } = prompt {
+      let id = if cfg!(test) { self.user.id } else { id };
+      self
+        .client()
+        .user(id)
+        .exec()
+        .await?
+        .model()
+        .await?
+        .avatar
+        .map(|hash| format!("https://cdn.discordapp.com/avatars/{}/{}.png", id, hash))
+    } else {
+      None
+    };
+
     rate_limit::wait().await;
     let prompt_message = self
-      .create_message(user_id, channel_id, &prompt_text)
+      .create_message(user_id, channel_id, &prompt_text, avatar_url)
       .await?;
 
     for emoji in prompt.reactions().iter().copied() {
@@ -283,7 +298,7 @@ impl Bot {
 
         rate_limit::wait().await;
         let prompt_message = self
-          .create_message(candidate_id, channel_id, &prompt_text)
+          .create_message(candidate_id, channel_id, &prompt_text, None)
           .await?;
 
         for emoji in prompt.reactions().iter().copied() {
@@ -322,13 +337,40 @@ impl Bot {
     user_id: UserId,
     channel_id: ChannelId,
     content: &str,
+    image_url: Option<String>,
   ) -> Result<Message> {
-    let create_message = self.client().create_message(channel_id);
+    let mut create_message = self.client().create_message(channel_id);
 
     let content = self.test_id.as_ref().map_or_else(
       || content.into(),
       |test_id| test_id.prefix_message(user_id.0, content),
     );
+
+    let mut embeds = Vec::new();
+    if let Some(image_url) = image_url {
+      embeds.push(Embed {
+        author: None,
+        color: None,
+        description: None,
+        fields: Vec::new(),
+        footer: None,
+        image: Some(EmbedImage {
+          height: None,
+          proxy_url: None,
+          url: Some(image_url),
+          width: None,
+        }),
+        kind: String::from("image"),
+        provider: None,
+        thumbnail: None,
+        timestamp: None,
+        title: None,
+        url: None,
+        video: None,
+      });
+    }
+
+    create_message = create_message.embeds(&embeds)?;
 
     Ok(
       create_message
@@ -345,7 +387,7 @@ impl Bot {
     Self::new(db_path, Some(test_id)).await
   }
 
-  fn client(&self) -> &Client {
+  pub fn client(&self) -> &Client {
     self.cluster.config().http_client()
   }
 
@@ -369,7 +411,7 @@ impl Bot {
     cluster.up().await;
 
     match events.next().await {
-      Some((_, Event::Ready(_))) => {},
+      Some((_, Event::Ready(_))) => {}
       event => return Err(Error::ClusterReady { event }),
     }
 

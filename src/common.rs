@@ -31,7 +31,10 @@ pub(crate) use ::{
     api_error::ApiError, client::Client, response::ResponseFuture, Error as HttpError,
   },
   twilight_model::{
-    channel::{Channel, ChannelType, Message, ReactionType},
+    channel::{
+      embed::{Embed, EmbedImage},
+      Channel, ChannelType, Message, ReactionType,
+    },
     gateway::{
       event::Event,
       payload::{MessageCreate, ReactionAdd},
@@ -43,7 +46,7 @@ pub(crate) use ::{
 // local dependencies
 pub(crate) use ::{
   db::Db,
-  model::{Action, Response, User},
+  model::{Action, Prompt, Response, User},
 };
 
 // logging macros
@@ -90,7 +93,7 @@ mod test {
   };
 
   // local dependencies
-  pub(crate) use model::{Emoji, Prompt};
+  pub(crate) use model::Emoji;
 
   // macros
   pub(crate) use crate::test_bot;
