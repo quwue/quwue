@@ -500,3 +500,53 @@ fn dont_show_users_as_candidates_when_they_have_pending_match_prompts() {
     c.expect_prompt(Prompt::Quiescent).await;
   })
 }
+
+#[instrument]
+#[test]
+#[ignore]
+fn show_avatar_in_candidate_and_match_prompt() {
+  test(async {
+    let mut bot = test_bot!().await;
+    let mut a = bot.new_user().await;
+    let mut b = bot.new_user().await;
+
+    a.setup().await;
+    a.expect_prompt(Prompt::Quiescent).await;
+
+    b.setup().await;
+    let message_id = b.expect_prompt(Prompt::Candidate { id: a.id() }).await;
+
+    let embeds = bot.get_message(message_id).await.embeds;
+
+    assert_eq!(embeds.len(), 1);
+    assert!(embeds[0]
+      .image
+      .as_ref()
+      .unwrap()
+      .url
+      .as_ref()
+      .unwrap()
+      .starts_with("https://cdn.discordapp.com/avatars/"));
+
+    b.send_message("yes").await;
+    b.expect_prompt(Prompt::Quiescent).await;
+
+    a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
+    a.send_message("yes").await;
+
+    a.expect_prompt(Prompt::Match { id: b.id() }).await;
+    let message_id = b.expect_prompt(Prompt::Match { id: a.id() }).await;
+
+    let embeds = bot.get_message(message_id).await.embeds;
+
+    assert_eq!(embeds.len(), 1);
+    assert!(embeds[0]
+      .image
+      .as_ref()
+      .unwrap()
+      .url
+      .as_ref()
+      .unwrap()
+      .starts_with("https://cdn.discordapp.com/avatars/"));
+  })
+}

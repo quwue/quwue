@@ -22,7 +22,7 @@ pub(crate) struct Inner {
   db:      Db,
   events:  Arc<Mutex<Events>>,
   test_id: Option<TestId>,
-  user:    discord::User,
+  user:    twilight_model::user::User,
 }
 
 impl Deref for Bot {
@@ -234,32 +234,12 @@ impl Bot {
 
     let user_id = user.discord_id;
 
-    let mut tx = self.db.prepare(user_id, &update).await?;
+    let tx = self.db.prepare(user_id, &update).await?;
 
-    let prompt = tx.prompt();
-
-    let prompt_text = Db::prompt_text(&mut tx.inner_transaction(), prompt).await?;
-
-    rate_limit::wait().await;
-    let prompt_message = self
-      .create_message(user_id, channel_id, &prompt_text)
-      .await?;
-
-    for emoji in prompt.reactions().iter().copied() {
-      let reaction_type = emoji.into();
-
-      rate_limit::wait().await;
-      self
-        .client()
-        .create_reaction(channel_id, prompt_message.id, &reaction_type)
-        .exec()
-        .await?;
-    }
-
-    tx.commit(prompt_message.id).await?;
+    self.send_prompt(tx, channel_id, user_id).await?;
 
     if let Some(Action::AcceptCandidate { id: candidate_id }) = update.action {
-      if let Some(mut tx) = self
+      if let Some(tx) = self
         .db
         .prepare_interrupt_for_accept(user_id, candidate_id)
         .await?
@@ -276,30 +256,55 @@ impl Bot {
             .await?
             .id
         };
-
-        let prompt = tx.prompt();
-
-        let prompt_text = Db::prompt_text(&mut tx.inner_transaction(), prompt).await?;
-
-        rate_limit::wait().await;
-        let prompt_message = self
-          .create_message(candidate_id, channel_id, &prompt_text)
-          .await?;
-
-        for emoji in prompt.reactions().iter().copied() {
-          let reaction_type = emoji.into();
-
-          rate_limit::wait().await;
-          self
-            .client()
-            .create_reaction(channel_id, prompt_message.id, &reaction_type)
-            .exec()
-            .await?;
-        }
-
-        tx.commit(prompt_message.id).await?;
+        self.send_prompt(tx, channel_id, candidate_id).await?;
       }
     }
+
+    Ok(())
+  }
+
+  async fn send_prompt(
+    &self,
+    mut tx: UpdateTx<'_>,
+    channel_id: ChannelId,
+    recipient_id: UserId,
+  ) -> Result<()> {
+    let prompt = tx.prompt();
+
+    let prompt_text = Db::prompt_text(&mut tx.inner_transaction(), prompt).await?;
+
+    let avatar_url = if let Prompt::Candidate { id } | Prompt::Match { id } = prompt {
+      let id = if cfg!(test) { self.user.id } else { id };
+      self
+        .client()
+        .user(id)
+        .exec()
+        .await?
+        .model()
+        .await?
+        .avatar
+        .map(|hash| format!("https://cdn.discordapp.com/avatars/{}/{}.png", id, hash))
+    } else {
+      None
+    };
+
+    rate_limit::wait().await;
+    let prompt_message = self
+      .create_message(recipient_id, channel_id, &prompt_text, avatar_url)
+      .await?;
+
+    for emoji in prompt.reactions().iter().copied() {
+      let reaction_type = emoji.into();
+
+      rate_limit::wait().await;
+      self
+        .client()
+        .create_reaction(channel_id, prompt_message.id, &reaction_type)
+        .exec()
+        .await?;
+    }
+
+    tx.commit(prompt_message.id).await?;
 
     Ok(())
   }
@@ -322,13 +327,40 @@ impl Bot {
     user_id: UserId,
     channel_id: ChannelId,
     content: &str,
+    image_url: Option<String>,
   ) -> Result<Message> {
-    let create_message = self.client().create_message(channel_id);
+    let mut create_message = self.client().create_message(channel_id);
 
     let content = self.test_id.as_ref().map_or_else(
       || content.into(),
       |test_id| test_id.prefix_message(user_id.0, content),
     );
+
+    let mut embeds = Vec::new();
+    if let Some(image_url) = image_url {
+      embeds.push(Embed {
+        author:      None,
+        color:       None,
+        description: None,
+        fields:      Vec::new(),
+        footer:      None,
+        image:       Some(EmbedImage {
+          height:    None,
+          proxy_url: None,
+          url:       Some(image_url),
+          width:     None,
+        }),
+        kind:        String::from("image"),
+        provider:    None,
+        thumbnail:   None,
+        timestamp:   None,
+        title:       None,
+        url:         None,
+        video:       None,
+      });
+    }
+
+    create_message = create_message.embeds(&embeds)?;
 
     Ok(
       create_message
@@ -345,7 +377,7 @@ impl Bot {
     Self::new(db_path, Some(test_id)).await
   }
 
-  fn client(&self) -> &Client {
+  pub(crate) fn client(&self) -> &Client {
     self.cluster.config().http_client()
   }
 

@@ -27,9 +27,8 @@ twilight-gateway        = "0.6.0"
 twilight-model          = "0.6.0"
 url                     = "2.2.1"
 
-db      = { path = "crates/db"      }
-discord = { path = "crates/discord" }
-model   = { path = "crates/model"   }
+db    = { path = "crates/db"    }
+model = { path = "crates/model" }
 
 [dependencies.sqlx]
 version  = "0.5.1"

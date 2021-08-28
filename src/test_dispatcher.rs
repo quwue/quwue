@@ -10,7 +10,7 @@ pub(crate) struct TestDispatcher {
   guild:       Guild,
   member:      Member,
   test_run_id: TestRunId,
-  user:        discord::User,
+  user:        twilight_model::user::User,
   channels:    Arc<RwLock<Channels>>,
 }
 
