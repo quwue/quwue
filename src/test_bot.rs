@@ -21,7 +21,7 @@ pub(crate) struct TestBot {
   error:            ErrorReceiver,
   test_name:        String,
   next_user_number: u64,
-  pub bot:              Bot,
+  pub bot:          Bot,
   #[allow(unused)]
   tmpdir:           TempDir,
 }

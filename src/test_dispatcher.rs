@@ -4,7 +4,7 @@ type Channels = BTreeMap<TestUserId, mpsc::UnboundedSender<(MessageId, TestEvent
 
 #[derive(Debug)]
 pub(crate) struct TestDispatcher {
-  pub channel:     TextChannel,
+  pub channel: TextChannel,
   cluster:     Cluster,
   events:      Mutex<Events>,
   guild:       Guild,
@@ -339,7 +339,6 @@ impl TestDispatcher {
       .await
       .unwrap();
   }
-
 
   pub(crate) fn client(&self) -> &Client {
     self.cluster.config().http_client()
