@@ -45,7 +45,7 @@ pub(crate) use ::{
 
 // local dependencies
 pub(crate) use ::{
-  db::Db,
+  db::{Db, UpdateTx},
   model::{Action, Prompt, Response, User},
 };
 

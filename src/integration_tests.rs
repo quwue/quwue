@@ -539,5 +539,36 @@ fn show_avatar_in_candidate_and_match_prompt() {
       .as_ref()
       .unwrap()
       .starts_with("https://cdn.discordapp.com/avatars/"));
+
+    b.send_message("yes").await;
+    b.expect_prompt(Prompt::Quiescent).await;
+
+    a.expect_prompt(Prompt::Candidate { id: b.id() }).await;
+    a.send_message("yes").await;
+
+    a.expect_prompt(Prompt::Match { id: b.id() }).await;
+    let message_id = b.expect_prompt(Prompt::Match { id: a.id() }).await;
+
+    let embeds = bot
+      .bot
+      .client()
+      .message(dispatcher.channel.id, message_id)
+      .exec()
+      .await
+      .unwrap()
+      .model()
+      .await
+      .unwrap()
+      .embeds;
+
+    assert_eq!(embeds.len(), 1);
+    assert!(embeds[0]
+      .image
+      .as_ref()
+      .unwrap()
+      .url
+      .as_ref()
+      .unwrap()
+      .starts_with("https://cdn.discordapp.com/avatars/"));
   })
 }

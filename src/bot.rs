@@ -22,7 +22,7 @@ pub(crate) struct Inner {
   db: Db,
   events: Arc<Mutex<Events>>,
   test_id: Option<TestId>,
-  user: discord::User,
+  user: twilight_model::user::User,
 }
 
 impl Deref for Bot {
@@ -234,8 +234,41 @@ impl Bot {
 
     let user_id = user.discord_id;
 
-    let mut tx = self.db.prepare(user_id, &update).await?;
+    let tx = self.db.prepare(user_id, &update).await?;
 
+    self.send_prompt(tx, channel_id, user_id).await?;
+
+    if let Some(Action::AcceptCandidate { id: candidate_id }) = update.action {
+      if let Some(tx) = self
+        .db
+        .prepare_interrupt_for_accept(user_id, candidate_id)
+        .await?
+      {
+        let channel_id = if cfg!(test) {
+          channel_id
+        } else {
+          self
+            .client()
+            .create_private_channel(candidate_id)
+            .exec()
+            .await?
+            .model()
+            .await?
+            .id
+        };
+        self.send_prompt(tx, channel_id, candidate_id).await?;
+      }
+    }
+
+    Ok(())
+  }
+
+  async fn send_prompt(
+    &self,
+    mut tx: UpdateTx<'_>,
+    channel_id: ChannelId,
+    recipient_id: UserId,
+  ) -> Result<()> {
     let prompt = tx.prompt();
 
     let prompt_text = Db::prompt_text(&mut tx.inner_transaction(), prompt).await?;
@@ -257,7 +290,7 @@ impl Bot {
 
     rate_limit::wait().await;
     let prompt_message = self
-      .create_message(user_id, channel_id, &prompt_text, avatar_url)
+      .create_message(recipient_id, channel_id, &prompt_text, avatar_url)
       .await?;
 
     for emoji in prompt.reactions().iter().copied() {
@@ -272,49 +305,6 @@ impl Bot {
     }
 
     tx.commit(prompt_message.id).await?;
-
-    if let Some(Action::AcceptCandidate { id: candidate_id }) = update.action {
-      if let Some(mut tx) = self
-        .db
-        .prepare_interrupt_for_accept(user_id, candidate_id)
-        .await?
-      {
-        let channel_id = if cfg!(test) {
-          channel_id
-        } else {
-          self
-            .client()
-            .create_private_channel(candidate_id)
-            .exec()
-            .await?
-            .model()
-            .await?
-            .id
-        };
-
-        let prompt = tx.prompt();
-
-        let prompt_text = Db::prompt_text(&mut tx.inner_transaction(), prompt).await?;
-
-        rate_limit::wait().await;
-        let prompt_message = self
-          .create_message(candidate_id, channel_id, &prompt_text, None)
-          .await?;
-
-        for emoji in prompt.reactions().iter().copied() {
-          let reaction_type = emoji.into();
-
-          rate_limit::wait().await;
-          self
-            .client()
-            .create_reaction(channel_id, prompt_message.id, &reaction_type)
-            .exec()
-            .await?;
-        }
-
-        tx.commit(prompt_message.id).await?;
-      }
-    }
 
     Ok(())
   }

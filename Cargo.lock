@@ -425,13 +425,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "discord"
-version = "0.0.0"
-dependencies = [
- "twilight-model",
-]
-
-[[package]]
 name = "doc-comment"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1228,7 +1221,6 @@ dependencies = [
  "ansi_term 0.12.1",
  "async-trait",
  "db",
- "discord",
  "futures",
  "futures-util",
  "http",
