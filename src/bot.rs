@@ -377,7 +377,7 @@ impl Bot {
     Self::new(db_path, Some(test_id)).await
   }
 
-  pub fn client(&self) -> &Client {
+  pub(crate) fn client(&self) -> &Client {
     self.cluster.config().http_client()
   }
 
