@@ -28,6 +28,11 @@ pub(crate) enum Error {
   )]
   DeserializeBody { source: DeserializeBodyError },
 
+  #[snafu(context(false), display("Failed to build embed: {}", source))]
+  EmbedBuild {
+    source: twilight_embed_builder::EmbedError,
+  },
+
   #[snafu(display("Failed to parse embed image URL: {}", source))]
   EmbedImageUrlParse {
     source: url::ParseError,
@@ -36,6 +41,14 @@ pub(crate) enum Error {
 
   #[snafu(context(false), display("Http error: {}", source))]
   Http { source: HttpError },
+
+  #[snafu(
+    context(false),
+    display("Failed to create image source URL: {}", source)
+  )]
+  ImageSourceUrl {
+    source: twilight_embed_builder::image_source::ImageSourceUrlError,
+  },
 
   #[snafu(context(false), display("Database migration failed: {}", source))]
   Migration { source: sqlx::migrate::MigrateError },
@@ -63,11 +76,12 @@ impl Error {
   pub(crate) fn user_facing_message(&self) -> String {
     match self {
       Self::BotResponse { .. } => "Received a response from a bot".into(),
-      Self::ClusterReady { .. } => "Did not get ready event after starting cluster.".into(),
+      Self::ClusterReady { .. } => "Did not get ready event after starting cluster".into(),
       Self::ClusterStart { .. } => "Discord gateway error".into(),
       Self::CreateMessage { .. } => "Failed to send message".into(),
       Self::Db { .. } => "Database error".into(),
       Self::DeserializeBody { .. } => "Failed to deserialize response body".into(),
+      Self::EmbedBuild { .. } => "Failed to build embed".into(),
       Self::EmbedImageUrlParse { .. } => "Failed to parse embed image URL".into(),
       Self::Http { source } => {
         if let twilight_http::error::ErrorType::Response { status, error, .. } = source.kind() {
@@ -86,6 +100,7 @@ impl Error {
           "HTTP error".to_owned()
         }
       },
+      Self::ImageSourceUrl { .. } => "Failed to create image source URL".into(),
       Self::Migration { .. } => "Database migration error".into(),
       Self::PublicResponse { .. } => "Received a non-private response".into(),
       Self::Runtime { .. } => "Failed to initialize runtime".into(),

@@ -338,26 +338,11 @@ impl Bot {
 
     let mut embeds = Vec::new();
     if let Some(image_url) = image_url {
-      embeds.push(Embed {
-        author:      None,
-        color:       None,
-        description: None,
-        fields:      Vec::new(),
-        footer:      None,
-        image:       Some(EmbedImage {
-          height:    None,
-          proxy_url: None,
-          url:       Some(image_url),
-          width:     None,
-        }),
-        kind:        String::from("image"),
-        provider:    None,
-        thumbnail:   None,
-        timestamp:   None,
-        title:       None,
-        url:         None,
-        video:       None,
-      });
+      embeds.push(
+        EmbedBuilder::new()
+          .image(ImageSource::url(image_url)?)
+          .build()?,
+      );
     }
 
     create_message = create_message.embeds(&embeds)?;

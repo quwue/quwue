@@ -23,6 +23,7 @@ pub(crate) use ::{
   tracing_log::LogTracer,
   tracing_subscriber::{layer::SubscriberExt, EnvFilter},
   twilight_cache_inmemory::InMemoryCache,
+  twilight_embed_builder::{image_source::ImageSource, EmbedBuilder},
   twilight_gateway::{
     cluster::{ClusterStartError, Events},
     Cluster, EventTypeFlags, Intents,
@@ -31,10 +32,7 @@ pub(crate) use ::{
     api_error::ApiError, client::Client, response::ResponseFuture, Error as HttpError,
   },
   twilight_model::{
-    channel::{
-      embed::{Embed, EmbedImage},
-      Channel, ChannelType, Message, ReactionType,
-    },
+    channel::{Channel, ChannelType, Message, ReactionType},
     gateway::{
       event::Event,
       payload::{MessageCreate, ReactionAdd},
