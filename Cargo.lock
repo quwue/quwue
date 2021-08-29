@@ -1241,6 +1241,7 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
  "twilight-cache-inmemory",
+ "twilight-embed-builder",
  "twilight-gateway",
  "twilight-http",
  "twilight-model",
@@ -2132,6 +2133,15 @@ dependencies = [
  "bitflags",
  "dashmap",
  "serde",
+ "twilight-model",
+]
+
+[[package]]
+name = "twilight-embed-builder"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a13105b773175a704f8dd2c6c3c8a07476426d61b51d5e69d9d2eb5878f2ec93"
+dependencies = [
  "twilight-model",
 ]
 
