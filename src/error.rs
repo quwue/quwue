@@ -28,8 +28,8 @@ pub(crate) enum Error {
   )]
   DeserializeBody { source: DeserializeBodyError },
 
-  #[snafu(context(false), display("Failed to build embed image: {}", source))]
-  EmbedImageBuild {
+  #[snafu(context(false), display("Failed to build embed: {}", source))]
+  EmbedBuild {
     source: twilight_embed_builder::EmbedError,
   },
 
@@ -81,7 +81,7 @@ impl Error {
       Self::CreateMessage { .. } => "Failed to send message".into(),
       Self::Db { .. } => "Database error".into(),
       Self::DeserializeBody { .. } => "Failed to deserialize response body".into(),
-      Self::EmbedImageBuild { .. } => "Failed to build embed image".into(),
+      Self::EmbedBuild { .. } => "Failed to build embed".into(),
       Self::EmbedImageUrlParse { .. } => "Failed to parse embed image URL".into(),
       Self::Http { source } => {
         if let twilight_http::error::ErrorType::Response { status, error, .. } = source.kind() {
