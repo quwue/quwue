@@ -1,5 +1,6 @@
-/target
 /.env
-/log.txt
+/.vagrant
 /crates/*/target
+/log.txt
 /notes.md
+/target

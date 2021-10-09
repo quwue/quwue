@@ -67,17 +67,11 @@ done remote branch=`git rev-parse --abbrev-ref HEAD`:
 	git diff --no-ext-diff --quiet --exit-code {{branch}}
 	git branch -D {{branch}}
 
-deploy:
-	id --user quwue &>/dev/null || useradd -system quwue
-	/usr/local/bin/quwue --version &>/dev/null || cargo install --root /usr/local --path . --force
-	cp quwue.service /etc/systemd/system
-	chmod 664 /etc/systemd/system/quwue.service
-	[ -f /etc/systemd/system/quwue.service.d/override.conf ] || systemctl edit quwue
-	systemctl daemon-reload
-	systemctl restart quwue
-
-log:
-	journalctl --unit quwue.service
-
 actionlint:
   actionlint
+
+test-on-vagrant:
+  ssh-keygen -f ~/.ssh/known_hosts -R 10.9.8.7
+  vagrant up
+  ssh-keyscan 10.9.8.7 >> ~/.ssh/known_hosts
+  cargo run --package deploy -- --host 10.9.8.7
