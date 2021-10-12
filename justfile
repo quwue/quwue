@@ -67,11 +67,13 @@ done remote branch=`git rev-parse --abbrev-ref HEAD`:
 	git diff --no-ext-diff --quiet --exit-code {{branch}}
 	git branch -D {{branch}}
 
+deploy host:
+  cargo run --package deploy -- --host {{host}}
+
 actionlint:
   actionlint
 
-test-on-vagrant:
+test-on-vagrant: && (deploy '10.9.8.7')
   ssh-keygen -f ~/.ssh/known_hosts -R 10.9.8.7
   vagrant up
   ssh-keyscan 10.9.8.7 >> ~/.ssh/known_hosts
-  cargo run --package deploy -- --host 10.9.8.7

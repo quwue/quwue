@@ -19,7 +19,7 @@ impl Arguments {
       "curl --proto =https --tlsv1.2 -sSf https://sh.rustup.rs --output rustup.sh",
     );
 
-    self.ssh_check("[[ -d .cargo ]]", "sh rustup.sh -y");
+    self.ssh_check("[[ -f .cargo/bin/cargo ]]", "sh rustup.sh -y");
 
     self.ssh_check("[[ -d tmp ]]", "mkdir tmp");
 
