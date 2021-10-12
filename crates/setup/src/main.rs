@@ -11,10 +11,6 @@ fn main() {
   );
 
   run!(
-    %"systemctl daemon-reload"
-  );
-
-  run!(
     %"cp tmp/quwue/quwue.service /etc/systemd/system/quwue.service"
   );
 
@@ -32,6 +28,10 @@ fn main() {
       panic!("Command `systemctl edit quwue` failed: {}", status);
     }
   }
+
+  run!(
+    %"systemctl daemon-reload"
+  );
 
   run!(
     %"systemctl restart quwue"

@@ -1,5 +1,5 @@
 [package]
-name = "setup"
+name    = "setup"
 version = "0.0.0"
 edition = "2018"
 publish = false
