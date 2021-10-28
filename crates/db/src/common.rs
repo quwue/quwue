@@ -2,13 +2,16 @@
 pub(crate) use std::{
   convert::{Infallible, TryInto},
   path::{Path, PathBuf},
+  str::FromStr,
 };
 
 // dependencies
-pub(crate) use num_enum::TryFromPrimitiveError;
-pub(crate) use snafu::{ResultExt, Snafu};
-pub(crate) use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
-pub(crate) use twilight_model::id::{MessageId, UserId};
+pub(crate) use ::{
+  num_enum::TryFromPrimitiveError,
+  snafu::{ResultExt, Snafu},
+  sqlx::{sqlite::SqliteSynchronous, SqlitePool},
+  twilight_model::id::{MessageId, UserId},
+};
 
 // local dependencies
 pub(crate) use model::{Action, Emoji, Prompt, PromptDiscriminant, PromptMessage, Update, User};

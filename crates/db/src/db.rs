@@ -11,9 +11,11 @@ impl Db {
       path: path.to_owned(),
     })?;
 
-    Sqlite::create_database(&url).await.unwrap();
+    let options = sqlx::sqlite::SqliteConnectOptions::from_str(&url)?
+      .synchronous(SqliteSynchronous::Normal)
+      .create_if_missing(true);
 
-    let pool = SqlitePool::connect(&url).await?;
+    let pool = SqlitePool::connect_with(options).await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
 
