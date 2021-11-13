@@ -465,7 +465,7 @@ impl Db {
     let match_id = match_id.store();
 
     sqlx::query!(
-      "UPDATE responses SET dismissed = TRUE WHERE discord_id = ? AND candidate_id = ?",
+      "UPDATE responses SET dismissed = TRUE WHERE discord_id = $1 AND candidate_id = $2",
       user_id,
       match_id
     )
@@ -532,10 +532,15 @@ impl Db {
     let recipient_id = recipient_id.store();
 
     sqlx::query!(
-      "INSERT OR REPLACE INTO prompts
+      "INSERT INTO prompts
         (discriminant, payload, message_id, recipient_discord_id)
       VALUES
-        (?, ?, ?, ?)",
+        ($1, $2, $3, $4)
+      ON CONFLICT (recipient_discord_id) DO UPDATE SET
+        discriminant = $1,
+        payload = $2,
+        message_id = $3,
+        recipient_discord_id = $4",
       discriminant,
       payload,
       message_id,
@@ -551,7 +556,7 @@ impl Db {
     let user = user.store();
     let candidate = candidate.store();
     let row = sqlx::query!(
-      "SELECT response FROM responses WHERE discord_id = ? AND candidate_id = ?",
+      "SELECT response FROM responses WHERE discord_id = $1 AND candidate_id = $2",
       user,
       candidate
     )
