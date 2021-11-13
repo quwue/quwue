@@ -9,7 +9,7 @@ pub(crate) use std::{
 pub(crate) use ::{
   num_enum::TryFromPrimitiveError,
   snafu::{ResultExt, Snafu},
-  sqlx::PgPool,
+  sqlx::{migrate::MigrateDatabase, PgPool, Postgres},
   twilight_model::id::{MessageId, UserId},
 };
 

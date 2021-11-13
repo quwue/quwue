@@ -12,6 +12,10 @@ impl Db {
   pub async fn connect(name: &str) -> Result<Self> {
     let url = db_url::db_url(name);
 
+    if !sqlx::Postgres::database_exists(&url).await? {
+      Postgres::create_database(&url).await.unwrap();
+    }
+
     let options = sqlx::postgres::PgConnectOptions::from_str(&url)?;
 
     let pool = PgPool::connect_with(options).await?;
@@ -577,14 +581,21 @@ mod tests {
     db_name: String,
   }
 
+  use std::sync::atomic::{AtomicUsize, Ordering};
+
+  static TEST_DATABASE_NUMBER: AtomicUsize = AtomicUsize::new(0);
+
   impl TestContext {
     async fn new() -> Self {
+      let test_database_number = TEST_DATABASE_NUMBER.fetch_add(1, Ordering::Relaxed);
+
       let db_name = format!(
-        "quwue-test-{}",
+        "quwue-test-{}-{}",
         std::time::SystemTime::now()
           .duration_since(std::time::SystemTime::UNIX_EPOCH)
           .unwrap()
-          .as_millis()
+          .as_millis(),
+        test_database_number,
       );
 
       let db = Db::connect(&db_name).await.unwrap();
