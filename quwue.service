@@ -3,7 +3,7 @@ Description=Quwue
 
 [Service]
 Environment="RUST_LOG=info"
-ExecStart=quwue --db-path ${STATE_DIRECTORY}/db.sqlite
+ExecStart=quwue --db-name quwue
 StateDirectory=quwue
 User=quwue
 
