@@ -913,7 +913,10 @@ mod tests {
 
     guard_unwrap!(let sqlx::Error::Database(error) = error);
 
-    assert_eq!(error.message(), "FOREIGN KEY constraint failed");
+    assert_eq!(
+      error.message(),
+      r#"insert or update on table "responses" violates foreign key constraint "responses_discord_id_fkey""#
+    );
   }
 
   #[tokio::test(flavor = "multi_thread")]
@@ -936,7 +939,10 @@ mod tests {
 
     guard_unwrap!(let sqlx::Error::Database(error) = error);
 
-    assert_eq!(error.message(), "FOREIGN KEY constraint failed");
+    assert_eq!(
+      error.message(),
+      r#"insert or update on table "responses" violates foreign key constraint "responses_discord_id_fkey""#
+    );
   }
 
   #[tokio::test(flavor = "multi_thread")]
