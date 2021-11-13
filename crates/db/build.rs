@@ -1,17 +1,21 @@
-use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
-use std::{env, fs, path::Path};
+use ::{
+  sqlx::{migrate::MigrateDatabase, PgPool, Postgres},
+  std::{env, fs, path::Path, time::SystemTime},
+};
 
 #[tokio::main]
 async fn main() {
-  let db_path = Path::new(&env::var_os("OUT_DIR").unwrap()).join("db.sqlite");
+  let db_url = db_url::db_url(&format!(
+    "quwue-build-{}",
+    SystemTime::now()
+      .duration_since(SystemTime::UNIX_EPOCH)
+      .unwrap()
+      .as_millis()
+  ));
 
-  fs::remove_file(&db_path).ok();
+  Postgres::create_database(&db_url).await.unwrap();
 
-  let db_url = db_url::db_url(&db_path).unwrap();
-
-  Sqlite::create_database(&db_url).await.unwrap();
-
-  let pool = SqlitePool::connect(&db_url).await.unwrap();
+  let pool = PgPool::connect(&db_url).await.unwrap();
 
   sqlx::migrate!("./migrations").run(&pool).await.unwrap();
 
