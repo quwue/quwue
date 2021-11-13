@@ -16,7 +16,7 @@ db-url = { path = "../db-url" }
 
 [dependencies.sqlx]
 version  = "0.5.1"
-features = ["runtime-tokio-rustls", "sqlite"]
+features = ["runtime-tokio-rustls"]
 
 [dependencies.tokio]
 version          = "1.0.0"
@@ -28,7 +28,7 @@ path = "../db-url"
 
 [build-dependencies.sqlx]
 version  = "0.5.1"
-features = ["runtime-tokio-rustls", "sqlite"]
+features = ["runtime-tokio-rustls"]
 
 [build-dependencies.tokio]
 version          = "1.0.0"
