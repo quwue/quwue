@@ -182,9 +182,9 @@ impl Db {
       "SELECT
         candidate_id
       FROM
-        responses as outer
+        responses AS outer_responses
       WHERE
-        discord_id = ?
+        discord_id = $1
         AND
         response
         AND
@@ -193,9 +193,9 @@ impl Db {
         EXISTS (
           SELECT * FROM responses
           WHERE
-            discord_id = outer.candidate_id
+            discord_id = outer_responses.candidate_id
             AND
-            candidate_id = outer.discord_id
+            candidate_id = outer_responses.discord_id
             AND
             response
         )
