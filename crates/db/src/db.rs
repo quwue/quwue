@@ -258,7 +258,7 @@ impl Db {
         FROM
           responses
         WHERE
-          discord_id = ? AND candidate_id = ?
+          discord_id = $1 AND candidate_id = $2
         LIMIT 1",
         candidate_id,
         user_id,
@@ -283,7 +283,7 @@ impl Db {
         FROM
           prompts
         WHERE
-          recipient_discord_id = ?
+          recipient_discord_id = $1
         LIMIT 1",
         candidate_id,
       )
@@ -317,10 +317,16 @@ impl Db {
     let message_id = prompt_message.message_id.store();
 
     sqlx::query!(
-      "INSERT OR REPLACE INTO prompts
+      "INSERT INTO prompts
         (discriminant, payload, message_id, recipient_discord_id)
       VALUES
-        (?, ?, ?, ?)",
+        ($1, $2, $3, $4)
+      ON CONFLICT (recipient_discord_id) DO UPDATE SET
+        discriminant = $1,
+        payload = $2,
+        message_id = $3,
+        recipient_discord_id = $4;
+      ",
       discriminant,
       payload,
       message_id,
