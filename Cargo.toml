@@ -33,7 +33,7 @@ model = { path = "crates/model" }
 
 [dependencies.sqlx]
 version  = "0.5.1"
-features = ["runtime-tokio-rustls", "offline"]
+features = ["runtime-tokio-rustls", "postgres", "offline"]
 
 [dependencies.serde]
 version  = "1.0.0"
