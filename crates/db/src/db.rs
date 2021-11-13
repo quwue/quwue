@@ -141,26 +141,26 @@ impl Db {
       FROM
         users AS potential_candidate
       WHERE
-        welcomed == TRUE
+        welcomed = TRUE
         AND
         bio IS NOT NULL
         AND
-        discord_id != ?
+        discord_id != $1
         AND
         NOT EXISTS (
           SELECT * FROM responses
-          WHERE discord_id == ? AND candidate_id == potential_candidate.discord_id
+          WHERE discord_id = $2 AND candidate_id = potential_candidate.discord_id
         )
         AND
         NOT EXISTS (
           SELECT * FROM responses
-          WHERE discord_id == potential_candidate.discord_id AND candidate_id == ? AND NOT response
+          WHERE discord_id = potential_candidate.discord_id AND candidate_id = $3 AND NOT response
         )
         AND
         EXISTS (
           SELECT * FROM prompts
           WHERE
-            recipient_discord_id = potential_candidate.discord_id AND discriminant == ?
+            recipient_discord_id = potential_candidate.discord_id AND discriminant = $4
         )
       LIMIT 1",
       discord_id,
