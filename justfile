@@ -51,7 +51,10 @@ env:
 # install system development dependencies with homebrew
 install-dev-deps-homebrew:
   brew tap rhysd/actionlint https://github.com/rhysd/actionlint
-  brew install actionlint shellcheck
+  brew install actionlint shellcheck postgresql
+
+start-postgresql-homebrew:
+	brew services start postgresql
 
 push remote: ci
 	! git branch | grep '* master'
