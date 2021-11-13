@@ -1,6 +1,9 @@
 use cradle::prelude::*;
 use std::{path::Path, process::Command};
 
+// TODO:
+// - need to set postgres localhost connections over tcp/ip to trust
+
 fn main() {
   if !run_output!(%"id --user quwue") {
     run!(%"useradd --system quwue");
