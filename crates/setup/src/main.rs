@@ -6,6 +6,32 @@ fn main() {
     run!(%"useradd --system quwue");
   }
 
+  let StdoutTrimmed(root_exists) = run_output!(
+    "psql",
+    "postgres",
+    "-tAc",
+    "SELECT 1 FROM pg_roles WHERE rolname='root'"
+  );
+
+  if root_exists != "1" {
+    run!(%"sudo -u postgres createuser root");
+  }
+
+  run!(%"sudo -u postgres psql postgres -c", "ALTER user root createdb");
+
+  let StdoutTrimmed(quwue_exists) = run_output!(
+    "psql",
+    "postgres",
+    "-tAc",
+    "SELECT 1 FROM pg_roles WHERE rolname='quwue'"
+  );
+
+  if quwue_exists != "1" {
+    run!(%"sudo -u postgres createuser quwue");
+  }
+
+  run!(%"sudo -u postgres psql postgres -c", "ALTER user quwue createdb");
+
   run!(
     %"cargo install --root /usr/local --path tmp/quwue --force"
   );

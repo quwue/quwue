@@ -8,11 +8,14 @@ struct Arguments {
   host: String,
 }
 
+// TODO:
+// - should set pg_hba to trust
+
 impl Arguments {
   fn run(&self) {
     self.ssh("apt-get update");
 
-    self.ssh("apt-get install --yes build-essential");
+    self.ssh("apt-get install --yes build-essential postgresql");
 
     self.ssh_check(
       "[[ -f rustup.sh ]]",
@@ -49,7 +52,7 @@ impl Arguments {
   }
 
   fn ssh(&self, command: &'static str) {
-    run!("ssh", format!("root@{}", self.host), Split(command))
+    run!("ssh", format!("root@{}", self.host), Split(command));
   }
 
   fn ssh_check(&self, check: &'static str, command: &'static str) {
