@@ -325,7 +325,7 @@ impl Db {
         discriminant = $1,
         payload = $2,
         message_id = $3,
-        recipient_discord_id = $4;
+        recipient_discord_id = $4
       ",
       discriminant,
       payload,
@@ -344,7 +344,7 @@ impl Db {
     let discord_id = discord_id.store();
 
     sqlx::query!(
-      "UPDATE users SET welcomed = true WHERE discord_id = ?",
+      "UPDATE users SET welcomed = TRUE WHERE discord_id = $1",
       discord_id
     )
     .execute(tx)
@@ -357,7 +357,7 @@ impl Db {
     let discord_id = discord_id.store();
 
     sqlx::query!(
-      "UPDATE users SET bio = ? WHERE discord_id = ?",
+      "UPDATE users SET bio = $1 WHERE discord_id = $2",
       text,
       discord_id
     )
@@ -416,7 +416,7 @@ impl Db {
   async fn bio(tx: &mut Transaction<'_>, id: UserId) -> Result<String> {
     let id_storage = id.store();
 
-    let row = sqlx::query!("SELECT bio from users where discord_id = ?", id_storage)
+    let row = sqlx::query!("SELECT bio from users where discord_id = $1", id_storage)
       .fetch_optional(tx)
       .await?;
 
@@ -436,10 +436,16 @@ impl Db {
     let candidate_id = candidate_id.store();
 
     sqlx::query!(
-      "INSERT OR REPLACE INTO responses
+      "INSERT INTO responses
         (discord_id, candidate_id, response, dismissed)
       VALUES
-        (?, ?, ?, FALSE)",
+        ($1, $2, $3, FALSE)
+      ON CONFLICT (discord_id, candidate_id) DO UPDATE SET
+        discord_id = $1,
+        candidate_id = $2,
+        response = $3,
+        dismissed = FALSE
+      ",
       user_id,
       candidate_id,
       response
