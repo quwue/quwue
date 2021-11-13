@@ -17,12 +17,12 @@ pub(crate) struct Bot {
 
 #[derive(Debug)]
 pub(crate) struct Inner {
-  cache:   InMemoryCache,
+  cache: InMemoryCache,
   cluster: Cluster,
-  db:      Db,
-  events:  Arc<Mutex<Events>>,
+  db: Db,
+  events: Arc<Mutex<Events>>,
   test_id: Option<TestId>,
-  user:    twilight_model::user::User,
+  user: twilight_model::user::User,
 }
 
 impl Deref for Bot {
@@ -41,7 +41,7 @@ impl Bot {
 
     let runtime = runtime::init()?;
 
-    runtime.block_on(async { Self::new(&arguments.db_path, None).await?.run().await })?;
+    runtime.block_on(async { Self::new(&arguments.db_name, None).await?.run().await })?;
 
     Ok(())
   }
@@ -358,8 +358,8 @@ impl Bot {
   }
 
   #[cfg(test)]
-  pub(crate) async fn new_test_instance(db_path: &Path, test_id: TestId) -> Result<Self> {
-    Self::new(db_path, Some(test_id)).await
+  pub(crate) async fn new_test_instance(db_name: &str, test_id: TestId) -> Result<Self> {
+    Self::new(db_name, Some(test_id)).await
   }
 
   pub(crate) fn client(&self) -> &Client {
@@ -386,14 +386,14 @@ impl Bot {
     cluster.up().await;
 
     match events.next().await {
-      Some((_, Event::Ready(_))) => {},
+      Some((_, Event::Ready(_))) => {}
       event => return Err(Error::ClusterReady { event }),
     }
 
     Ok((cluster, Arc::new(Mutex::new(events))))
   }
 
-  async fn new(db_path: &Path, test_id: Option<TestId>) -> Result<Self> {
+  async fn new(db_name: &str, test_id: Option<TestId>) -> Result<Self> {
     let (cluster, events) = if test_id.is_some() {
       test_cluster::get().await.clone()
     } else {
@@ -408,7 +408,7 @@ impl Bot {
 
     let cache = InMemoryCache::new();
 
-    let db = Db::connect(db_path).await?;
+    let db = Db::connect(db_name).await?;
 
     let inner = Inner {
       cache,

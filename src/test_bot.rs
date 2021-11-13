@@ -18,12 +18,12 @@ type MapResult = fn(Result<JoinError, RecvError>) -> Arc<Result<JoinError, RecvE
 pub(crate) type ErrorReceiver = Shared<Map<Receiver<JoinError>, MapResult>>;
 
 pub(crate) struct TestBot {
-  error:            ErrorReceiver,
-  test_name:        String,
+  error: ErrorReceiver,
+  test_name: String,
   next_user_number: u64,
-  bot:              Bot,
+  bot: Bot,
   #[allow(unused)]
-  tmpdir:           TempDir,
+  tmpdir: TempDir,
 }
 
 impl TestBot {
@@ -36,7 +36,7 @@ impl TestBot {
 
     let db_path = tmpdir.path().join("db.sqlite");
 
-    let bot = Bot::new_test_instance(&db_path, test_id)
+    let bot = Bot::new_test_instance(&format!("test-{}", test_id.to_string()), test_id)
       .await
       .expect("Failed to construct quwue instance");
 

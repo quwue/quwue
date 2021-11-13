@@ -2,7 +2,7 @@ use crate::common::*;
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct TestId {
-  test_run:  TestRunId,
+  test_run: TestRunId,
   test_name: String,
 }
 
@@ -30,6 +30,12 @@ impl TestId {
       "test-{}-{}.{} {}",
       self.test_run, self.test_name, test_user_number, msg
     )
+  }
+}
+
+impl Display for TestId {
+  fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    write!(f, "{}-{}", self.test_run, self.test_name)
   }
 }
 
