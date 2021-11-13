@@ -373,7 +373,8 @@ impl Db {
       sqlx::query!("SELECT COUNT(*) as count FROM users")
         .fetch_one(&self.pool)
         .await?
-        .count as u64,
+        .count
+        .unwrap_or(0) as u64,
     )
   }
 
@@ -572,34 +573,29 @@ mod tests {
   use super::*;
 
   struct TestContext {
-    tmpdir: TempDir,
     db: Db,
-    db_path: PathBuf,
+    db_name: String,
   }
 
   impl TestContext {
     async fn new() -> Self {
-      let tmpdir = tempdir().unwrap();
+      let db_name = format!(
+        "quwue-test-{}",
+        std::time::SystemTime::now()
+          .duration_since(std::time::SystemTime::UNIX_EPOCH)
+          .unwrap()
+          .as_millis()
+      );
 
-      let db_path = tmpdir.path().join("db.sqlite");
+      let db = Db::connect(&db_name).await.unwrap();
 
-      let db = Db::connect(&db_path).await.unwrap();
-
-      TestContext {
-        tmpdir,
-        db,
-        db_path,
-      }
+      TestContext { db, db_name }
     }
   }
 
   #[tokio::test(flavor = "multi_thread")]
   async fn on_disk_database_is_persistant() {
-    let TestContext {
-      tmpdir: _tmpdir,
-      db,
-      db_path,
-    } = TestContext::new().await;
+    let TestContext { db, db_name } = TestContext::new().await;
 
     assert_eq!(db.user_count().await.unwrap(), 0);
 
@@ -609,7 +605,7 @@ mod tests {
 
     drop(db);
 
-    let db = Db::connect(&db_path).await.unwrap();
+    let db = Db::connect(&db_name).await.unwrap();
 
     assert_eq!(db.user_count().await.unwrap(), 1);
   }
