@@ -9,7 +9,7 @@ pub(crate) use std::{
 pub(crate) use ::{
   num_enum::TryFromPrimitiveError,
   snafu::{ResultExt, Snafu},
-  sqlx::{sqlite::SqliteSynchronous, SqlitePool},
+  sqlx::PgPool,
   twilight_model::id::{MessageId, UserId},
 };
 
@@ -27,7 +27,7 @@ pub(crate) use crate::{db::Db, error::Error, update_tx::UpdateTx};
 
 // type aliases
 pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
-pub(crate) type Transaction<'a> = sqlx::Transaction<'a, sqlx::Sqlite>;
+pub(crate) type Transaction<'a> = sqlx::Transaction<'a, sqlx::Postgres>;
 
 #[cfg(test)]
 mod test {

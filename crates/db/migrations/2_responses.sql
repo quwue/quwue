@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS responses (
   id BIGSERIAL NOT NULL PRIMARY KEY,
-  discord_id INTEGER NOT NULL,
-  candidate_id INTEGER NOT NULL,
+  discord_id BIGINT NOT NULL,
+  candidate_id BIGINT NOT NULL,
   response BOOLEAN NOT NULL,
   dismissed BOOLEAN NOT NULL,
   UNIQUE(discord_id, candidate_id),

@@ -2,20 +2,19 @@ use crate::common::*;
 
 #[derive(Debug)]
 pub struct Db {
-  pool: SqlitePool,
+  pool: PgPool,
 }
 
+// TODO:
+// - deal with creating the database if it doesn't exist
+
 impl Db {
-  pub async fn connect(path: &Path) -> Result<Self> {
-    let url = db_url::db_url(path).ok_or_else(|| Error::PathUnicodeDecode {
-      path: path.to_owned(),
-    })?;
+  pub async fn connect(name: &str) -> Result<Self> {
+    let url = db_url::db_url(name);
 
-    let options = sqlx::sqlite::SqliteConnectOptions::from_str(&url)?
-      .synchronous(SqliteSynchronous::Normal)
-      .create_if_missing(true);
+    let options = sqlx::postgres::PgConnectOptions::from_str(&url)?;
 
-    let pool = SqlitePool::connect_with(options).await?;
+    let pool = PgPool::connect_with(options).await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
 
