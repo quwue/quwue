@@ -87,7 +87,7 @@ jobs:
         components: rustfmt
 
     - name: Check Formatting
-      run: cargo +nightly fmt --workspace -- --check
+      run: cargo +nightly fmt --all -- --check
 
     - name: Install
       run: |
