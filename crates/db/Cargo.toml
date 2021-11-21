@@ -15,7 +15,7 @@ model  = { path = "../model"  }
 db-url = { path = "../db-url" }
 
 [dependencies.sqlx]
-version  = "0.5.1"
+version  = "0.5.9"
 features = ["runtime-tokio-rustls", "postgres"]
 
 [dependencies.tokio]

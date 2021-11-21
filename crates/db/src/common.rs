@@ -1,7 +1,7 @@
 // stdlib
 pub(crate) use std::{
   convert::{Infallible, TryInto},
-  path::{Path, PathBuf},
+  path::PathBuf,
   str::FromStr,
 };
 
@@ -32,7 +32,6 @@ pub(crate) type Transaction<'a> = sqlx::Transaction<'a, sqlx::Postgres>;
 #[cfg(test)]
 mod test {
   pub(crate) use guard::guard_unwrap;
-  pub(crate) use tempfile::{tempdir, TempDir};
 }
 
 #[cfg(test)]

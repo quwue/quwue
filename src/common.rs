@@ -77,7 +77,6 @@ mod test {
     },
     once_cell::sync::Lazy,
     serde::Deserialize,
-    tempfile::TempDir,
     tokio::{
       sync::{mpsc, RwLock},
       time,

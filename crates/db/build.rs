@@ -1,6 +1,6 @@
 use ::{
   sqlx::{migrate::MigrateDatabase, PgPool, Postgres},
-  std::{env, fs, path::Path, time::SystemTime},
+  std::time::SystemTime,
 };
 
 #[tokio::main]
