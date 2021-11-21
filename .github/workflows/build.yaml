@@ -40,7 +40,7 @@ jobs:
         brew install gnu-tar
         echo /usr/local/opt/gnu-tar/libexec/gnubin > "$GITHUB_PATH"
 
-    - name: Install Postgres (macOS)
+    - name: Install Postgres
       run: |
         brew install postgresql
         brew services start postgresql
