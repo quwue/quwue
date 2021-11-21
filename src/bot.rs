@@ -17,12 +17,12 @@ pub(crate) struct Bot {
 
 #[derive(Debug)]
 pub(crate) struct Inner {
-  cache: InMemoryCache,
+  cache:   InMemoryCache,
   cluster: Cluster,
-  db: Db,
-  events: Arc<Mutex<Events>>,
+  db:      Db,
+  events:  Arc<Mutex<Events>>,
   test_id: Option<TestId>,
-  user: twilight_model::user::User,
+  user:    twilight_model::user::User,
 }
 
 impl Deref for Bot {
@@ -386,7 +386,7 @@ impl Bot {
     cluster.up().await;
 
     match events.next().await {
-      Some((_, Event::Ready(_))) => {}
+      Some((_, Event::Ready(_))) => {},
       event => return Err(Error::ClusterReady { event }),
     }
 

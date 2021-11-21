@@ -18,12 +18,12 @@ type MapResult = fn(Result<JoinError, RecvError>) -> Arc<Result<JoinError, RecvE
 pub(crate) type ErrorReceiver = Shared<Map<Receiver<JoinError>, MapResult>>;
 
 pub(crate) struct TestBot {
-  error: ErrorReceiver,
-  test_name: String,
+  error:            ErrorReceiver,
+  test_name:        String,
   next_user_number: u64,
-  bot: Bot,
+  bot:              Bot,
   #[allow(unused)]
-  tmpdir: TempDir,
+  tmpdir:           TempDir,
 }
 
 impl TestBot {

@@ -2,7 +2,7 @@ use crate::common::*;
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct TestId {
-  test_run: TestRunId,
+  test_run:  TestRunId,
   test_name: String,
 }
 

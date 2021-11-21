@@ -42,7 +42,7 @@ impl Db {
 
       let prompt_message = match prompt {
         Some(row) => Some(PromptMessage {
-          prompt: Prompt::load((row.discriminant, row.payload))?,
+          prompt:     Prompt::load((row.discriminant, row.payload))?,
           message_id: MessageId::load(row.message_id).unwrap_infallible(),
         }),
         None => None,
@@ -401,7 +401,7 @@ impl Db {
         .into(),
       Candidate { id } => {
         format!("New potential match:\n{}", Self::bio(tx, id).await?)
-      }
+      },
       Bio => "Please enter a bio to show to other users.".into(),
       Match { id } => format!(
         concat!(
@@ -505,7 +505,7 @@ impl Db {
     self.user(id).await.unwrap();
 
     let update = Update {
-      action: Some(Action::Welcome),
+      action:      Some(Action::Welcome),
       next_prompt: Prompt::Bio,
     };
 
@@ -514,7 +514,7 @@ impl Db {
     tx.commit(MessageId(200)).await.unwrap();
 
     let update = Update {
-      action: Some(Action::SetBio {
+      action:      Some(Action::SetBio {
         text: format!("User {}'s bio!", id),
       }),
       next_prompt: Prompt::Quiescent,
@@ -577,7 +577,7 @@ mod tests {
   use super::*;
 
   struct TestContext {
-    db: Db,
+    db:      Db,
     db_name: String,
   }
 
@@ -668,7 +668,7 @@ mod tests {
     };
 
     let update = Update {
-      action: Some(Action::Welcome),
+      action:      Some(Action::Welcome),
       next_prompt: Prompt::Welcome,
     };
 
@@ -710,7 +710,7 @@ mod tests {
     };
 
     let update = Update {
-      action: Some(Action::SetBio {
+      action:      Some(Action::SetBio {
         text: "bio!".to_owned(),
       }),
       next_prompt: Prompt::Bio,
@@ -747,7 +747,7 @@ mod tests {
     let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
+      action:      Some(Action::AcceptCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -764,7 +764,7 @@ mod tests {
     let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
-      action: Some(Action::DeclineCandidate { id: a }),
+      action:      Some(Action::DeclineCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -781,7 +781,7 @@ mod tests {
     let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
-      action: Some(Action::DeclineCandidate { id: a }),
+      action:      Some(Action::DeclineCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -792,7 +792,7 @@ mod tests {
     tx.commit(MessageId(201)).await.unwrap();
 
     let update = Update {
-      action: None,
+      action:      None,
       next_prompt: Prompt::Quiescent,
     };
 
@@ -809,7 +809,7 @@ mod tests {
     let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
+      action:      Some(Action::AcceptCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -820,7 +820,7 @@ mod tests {
     tx.commit(MessageId(201)).await.unwrap();
 
     let update = Update {
-      action: None,
+      action:      None,
       next_prompt: Prompt::Quiescent,
     };
 
@@ -837,7 +837,7 @@ mod tests {
     let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
+      action:      Some(Action::AcceptCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -850,7 +850,7 @@ mod tests {
     assert!(context.db.response(b, a).await);
 
     let update = Update {
-      action: Some(Action::DeclineCandidate { id: a }),
+      action:      Some(Action::DeclineCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -871,7 +871,7 @@ mod tests {
     let b = context.db.create_user(Prompt::Candidate { id: a }).await;
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
+      action:      Some(Action::AcceptCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -882,7 +882,7 @@ mod tests {
     tx.commit(MessageId(201)).await.unwrap();
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: b }),
+      action:      Some(Action::AcceptCandidate { id: b }),
       next_prompt: Prompt::Quiescent,
     };
 
@@ -959,7 +959,7 @@ mod tests {
     assert_eq!(Db::get_candidate(&mut tx, a).await.unwrap(), Some(b));
 
     let update = Update {
-      action: Some(Action::AcceptCandidate { id: a }),
+      action:      Some(Action::AcceptCandidate { id: a }),
       next_prompt: Prompt::Quiescent,
     };
     context
