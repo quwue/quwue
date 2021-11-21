@@ -1,4 +1,4 @@
-use ::{
+use {
   sqlx::{migrate::MigrateDatabase, PgPool, Postgres},
   std::time::SystemTime,
 };

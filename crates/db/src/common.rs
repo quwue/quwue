@@ -6,7 +6,7 @@ pub(crate) use std::{
 };
 
 // dependencies
-pub(crate) use ::{
+pub(crate) use {
   num_enum::TryFromPrimitiveError,
   snafu::{ResultExt, Snafu},
   sqlx::{migrate::MigrateDatabase, PgPool, Postgres},

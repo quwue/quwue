@@ -13,7 +13,7 @@ pub(crate) use std::{
 };
 
 // dependencies
-pub(crate) use ::{
+pub(crate) use {
   async_trait::async_trait,
   futures_util::StreamExt,
   serde::de::DeserializeOwned,
@@ -42,7 +42,7 @@ pub(crate) use ::{
 };
 
 // local dependencies
-pub(crate) use ::{
+pub(crate) use {
   db::{Db, UpdateTx},
   model::{Action, Prompt, Response, User},
 };
@@ -70,7 +70,7 @@ mod test {
   pub(crate) use std::{collections::BTreeMap, error::Error as _};
 
   // dependencies
-  pub(crate) use ::{
+  pub(crate) use {
     futures::{
       future::{Future, FutureExt},
       select,
