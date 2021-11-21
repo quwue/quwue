@@ -43,7 +43,7 @@ clippy:
 	./bin/clippy
 
 run:
-	cargo run
+	cargo run -- --db-name quwue
 
 env:
 	env

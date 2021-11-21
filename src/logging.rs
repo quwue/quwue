@@ -2,10 +2,8 @@ use crate::common::*;
 
 use tracing_subscriber::fmt::Layer;
 
-// TODO: What changed? Why is this failing?
-
 pub(crate) fn init(log_dir: Option<&Path>) {
-  LogTracer::init().ok();
+  LogTracer::init().expect("Log tracer already set");
 
   let subscriber = tracing_subscriber::registry()
     .with(EnvFilter::from_default_env())
@@ -22,7 +20,7 @@ pub(crate) fn init(log_dir: Option<&Path>) {
   } else {
     tracing::subscriber::set_global_default(subscriber)
   }
-  .ok();
+  .expect("Global default tracing subscriber already set");
 
   info!("Logging initialized.");
 }
