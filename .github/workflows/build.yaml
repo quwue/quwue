@@ -18,14 +18,7 @@ jobs:
   all:
     name: All
 
-    strategy:
-      matrix:
-        os:
-        - macos-latest
-        - ubuntu-latest
-        - windows-latest
-
-    runs-on: ${{matrix.os}}
+    runs-on: macos-latest
 
     env:
       RUSTFLAGS: "--deny warnings"
@@ -43,26 +36,14 @@ jobs:
     # An issue with BSD Tar causes sporadic failures on macOS.
     # c.f https://github.com/actions/cache/issues/403
     - name: Install GNU Tar
-      if: ${{ matrix.os == 'macos-latest' }}
       run: |
         brew install gnu-tar
         echo /usr/local/opt/gnu-tar/libexec/gnubin > "$GITHUB_PATH"
 
     - name: Install Postgres (macOS)
-      if: ${{ matrix.os == 'macos-latest' }}
       run: |
         brew install postgresql
         brew services start postgresql
-
-    - name: Install Postgres (Linux)
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: |
-        sudo apt-get install postgresql
-
-    - name: Install Postgres (Windows)
-      if: ${{ matrix.os == 'windows-latest' }}
-      run: |
-        choco install postgresql
 
     - name: Cache
       uses: actions/cache@v2
@@ -91,9 +72,8 @@ jobs:
       run: cargo test --workspace --all-features --all-targets
 
     - name: Forbid
-      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
-        sudo apt-get install ripgrep
+        brew install ripgrep
         ./bin/forbid
 
     - name: Clippy
