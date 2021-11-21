@@ -48,6 +48,17 @@ jobs:
         brew install gnu-tar
         echo /usr/local/opt/gnu-tar/libexec/gnubin > "$GITHUB_PATH"
 
+    - name: Install Postgres (macOS)
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: |
+        brew install postgresql
+	      brew services start postgresql
+
+    - name: Install Postgres (Linux)
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: |
+        sudo apt-get install postgresql
+
     - name: Cache
       uses: actions/cache@v2
       with:
