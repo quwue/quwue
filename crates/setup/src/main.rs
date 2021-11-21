@@ -13,7 +13,8 @@ fn main() {
     "psql",
     "postgres",
     "-tAc",
-    "SELECT 1 FROM pg_roles WHERE rolname='root'");
+    "SELECT 1 FROM pg_roles WHERE rolname='root'"
+  );
 
   if !status.success() || stdout != "1" {
     run!(LogCommand, %"sudo -Hiu postgres createuser root");
@@ -26,7 +27,8 @@ fn main() {
     "psql",
     "postgres",
     "-tAc",
-    "SELECT 1 FROM pg_roles WHERE rolname='quwue'");
+    "SELECT 1 FROM pg_roles WHERE rolname='quwue'"
+  );
 
   if !status.success() || stdout != "1" {
     run!(LogCommand, %"sudo -Hiu postgres createuser quwue");
