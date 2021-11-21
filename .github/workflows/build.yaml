@@ -69,10 +69,10 @@ jobs:
         cargo clippy --version
 
     - name: Build
-      run: cargo build --all-features --all-targets
+      run: cargo build --workspace --all-features --all-targets
 
     - name: Test
-      run: cargo test --all-features --all-targets
+      run: cargo test --workspace --all-features --all-targets
 
     - name: Forbid
       if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -91,7 +91,7 @@ jobs:
         components: rustfmt
 
     - name: Check Formatting
-      run: cargo +nightly fmt --all -- --check
+      run: cargo +nightly fmt --workspace -- --check
 
     - name: Install
       run: |
