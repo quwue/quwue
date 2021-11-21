@@ -7,10 +7,12 @@ macro_rules! test_bot {
   }};
 }
 
-use futures::future::{Map, Shared};
-use tokio::{
-  sync::oneshot::{error::RecvError, Receiver},
-  task::JoinError,
+use {
+  futures::future::{Map, Shared},
+  tokio::{
+    sync::oneshot::{error::RecvError, Receiver},
+    task::JoinError,
+  },
 };
 
 type MapResult = fn(Result<JoinError, RecvError>) -> Arc<Result<JoinError, RecvError>>;

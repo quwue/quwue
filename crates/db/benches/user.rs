@@ -1,7 +1,9 @@
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use db::Db;
-use std::time::SystemTime;
-use twilight_model::id::UserId;
+use {
+  criterion::{criterion_group, criterion_main, BenchmarkId, Criterion},
+  db::Db,
+  std::time::SystemTime,
+  twilight_model::id::UserId,
+};
 
 async fn benchmark(db: &Db, id: u64) {
   let user_id = UserId(id);

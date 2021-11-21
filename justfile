@@ -7,25 +7,25 @@ export EDITOR := 'vim'
 export RUST_BACKTRACE := bt
 export RUST_LOG := log
 
-watch *args='lcheck --all --tests':
+watch *args='lcheck --workspace --tests':
 	cargo watch --clear --exec '{{args}}'
 
 test *args:
-	cargo test --all -- {{args}}
+	cargo test --workspace -- {{args}}
 
 integration *args:
-	cargo test --all -- --test-threads 1 --ignored {{args}}
+	cargo test --workspace -- --test-threads 1 --ignored {{args}}
 
 ci: build test-all forbid fmt-check clippy clean-check
 
 build:
-	cargo build --all-features --all-targets
+	cargo build --workspace --all-features --all-targets
 
 check:
-	cargo check --all-features --all-targets
+	cargo check --workspace --all-features --all-targets
 
 test-all:
-	cargo test --all-features --all-targets
+	cargo test --workspace --all-features --all-targets
 
 forbid:
 	./bin/forbid

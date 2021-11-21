@@ -71,8 +71,7 @@ impl User {
   }
 
   fn action_for_reaction(prompt: Prompt, emoji: Emoji) -> Option<Action> {
-    use Emoji::*;
-    use Prompt::*;
+    use {Emoji::*, Prompt::*};
 
     match prompt {
       Welcome =>

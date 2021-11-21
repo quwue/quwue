@@ -578,12 +578,10 @@ mod tests {
     db_name: String,
   }
 
-  use std::sync::atomic::{AtomicUsize, Ordering};
-
-  static TEST_DATABASE_NUMBER: AtomicUsize = AtomicUsize::new(0);
-
   impl TestContext {
     async fn new() -> Self {
+      static TEST_DATABASE_NUMBER: AtomicUsize = AtomicUsize::new(0);
+
       let test_database_number = TEST_DATABASE_NUMBER.fetch_add(1, Ordering::Relaxed);
 
       let db_name = format!(

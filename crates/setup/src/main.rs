@@ -1,5 +1,7 @@
-use cradle::prelude::*;
-use std::{path::Path, process::Command};
+use {
+  cradle::prelude::*,
+  std::{path::Path, process::Command},
+};
 
 fn main() {
   if !run_output!(%"id --user quwue") {

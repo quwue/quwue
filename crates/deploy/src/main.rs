@@ -1,6 +1,4 @@
-use cradle::prelude::*;
-use std::process::Command;
-use structopt::StructOpt;
+use {cradle::prelude::*, std::process::Command, structopt::StructOpt};
 
 #[derive(StructOpt)]
 struct Arguments {

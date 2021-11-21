@@ -31,7 +31,10 @@ pub(crate) type Transaction<'a> = sqlx::Transaction<'a, sqlx::Postgres>;
 
 #[cfg(test)]
 mod test {
-  pub(crate) use guard::guard_unwrap;
+  pub(crate) use {
+    guard::guard_unwrap,
+    std::sync::atomic::{AtomicUsize, Ordering},
+  };
 }
 
 #[cfg(test)]
