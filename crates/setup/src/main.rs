@@ -4,46 +4,48 @@ use {
 };
 
 fn main() {
-  if !run_output!(%"id --user quwue") {
-    run!(%"useradd --system quwue");
+  if !run_output!(LogCommand, %"id --user quwue") {
+    run!(LogCommand, %"useradd --system quwue");
   }
 
-  let StdoutTrimmed(root_exists) = run_output!(
+  let (StdoutTrimmed(stdout), Status(status)) = run_output!(
+    LogCommand,
     "psql",
     "postgres",
     "-tAc",
     "SELECT 1 FROM pg_roles WHERE rolname='root'"
   );
 
-  if root_exists != "1" {
-    run!(%"sudo -u postgres createuser root");
+  if !status.success() || stdout != "1" {
+    run!(LogCommand, %"sudo -Hiu postgres createuser root");
   }
 
-  run!(%"sudo -u postgres psql postgres -c", "ALTER user root createdb");
+  run!(LogCommand, %"sudo -Hiu postgres psql postgres -c", "ALTER user root createdb");
 
-  let StdoutTrimmed(quwue_exists) = run_output!(
+  let (StdoutTrimmed(stdout), Status(status)) = run_output!(
+    LogCommand,
     "psql",
     "postgres",
     "-tAc",
     "SELECT 1 FROM pg_roles WHERE rolname='quwue'"
   );
 
-  if quwue_exists != "1" {
-    run!(%"sudo -u postgres createuser quwue");
+  if !status.success() || stdout != "1" {
+    run!(LogCommand, %"sudo -Hiu postgres createuser quwue");
   }
 
-  run!(%"sudo -u postgres psql postgres -c", "ALTER user quwue createdb");
+  run!(LogCommand, %"sudo -Hiu postgres psql postgres -c", "ALTER user quwue createdb");
 
   run!(
-    %"cargo install --root /usr/local --path tmp/quwue --force"
+    LogCommand, %"cargo install --root /usr/local --path tmp/quwue --force"
   );
 
   run!(
-    %"cp tmp/quwue/quwue.service /etc/systemd/system/quwue.service"
+    LogCommand, %"cp tmp/quwue/quwue.service /etc/systemd/system/quwue.service"
   );
 
   run!(
-    %"chmod 664 /etc/systemd/system/quwue.service"
+    LogCommand, %"chmod 664 /etc/systemd/system/quwue.service"
   );
 
   if !Path::new("/etc/systemd/system/quwue.service.d/override.conf").is_file() {
@@ -58,10 +60,10 @@ fn main() {
   }
 
   run!(
-    %"systemctl daemon-reload"
+    LogCommand, %"systemctl daemon-reload"
   );
 
   run!(
-    %"systemctl restart quwue"
+    LogCommand, %"systemctl restart quwue"
   );
 }
