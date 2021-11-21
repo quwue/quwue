@@ -5,9 +5,6 @@ pub struct Db {
   pool: PgPool,
 }
 
-// TODO:
-// - deal with creating the database if it doesn't exist
-
 impl Db {
   pub async fn connect(name: &str) -> Result<Self> {
     let url = db_url::db_url(name);

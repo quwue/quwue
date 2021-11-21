@@ -8,14 +8,22 @@ struct Arguments {
   host: String,
 }
 
-// TODO:
-// - should set pg_hba to trust
-
 impl Arguments {
   fn run(&self) {
     self.ssh("apt-get update");
 
     self.ssh("apt-get install --yes build-essential postgresql");
+
+    eprintln!(
+      "Set IPv4 and IPv6 local connections to trust in /etc/postgresql/13/main/pg_hba.conf"
+    );
+    eprintln!();
+    eprintln!("# IPv4 local connections:");
+    eprintln!("host    all             all             127.0.0.1/32            trust");
+    eprintln!("# IPv6 local connections:");
+    eprintln!("host    all             all             ::1/128                 trust");
+
+    Command::new("bash").args(&["-c", "read"]).output().unwrap();
 
     self.ssh_check(
       "[[ -f rustup.sh ]]",
