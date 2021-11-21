@@ -33,6 +33,12 @@ impl TestId {
   }
 }
 
+impl Display for TestId {
+  fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    write!(f, "{}-{}", self.test_run, self.test_name)
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;

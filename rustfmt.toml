@@ -1,7 +1,6 @@
 comment_width                = 80
 edition                      = "2018"
 error_on_line_overflow       = true
-error_on_unformatted         = true
 format_code_in_doc_comments  = true
 format_macro_bodies          = true
 format_strings               = true
@@ -9,7 +8,7 @@ match_arm_blocks             = false
 match_block_trailing_comma   = true
 max_width                    = 100
 newline_style                = "Unix"
-imports_granularity          = "Crate"
+imports_granularity          = "One"
 normalize_comments           = true
 overflow_delimited_expr      = true
 reorder_impl_items           = true

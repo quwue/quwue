@@ -1,5 +1,5 @@
 // dependencies
-pub(crate) use ::{
+pub(crate) use {
   num_enum::TryFromPrimitive,
   strum::{EnumDiscriminants, EnumIter},
   twilight_http::request::channel::reaction::RequestReactionType,

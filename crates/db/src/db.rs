@@ -2,20 +2,20 @@ use crate::common::*;
 
 #[derive(Debug)]
 pub struct Db {
-  pool: SqlitePool,
+  pool: PgPool,
 }
 
 impl Db {
-  pub async fn connect(path: &Path) -> Result<Self> {
-    let url = db_url::db_url(path).ok_or_else(|| Error::PathUnicodeDecode {
-      path: path.to_owned(),
-    })?;
+  pub async fn connect(name: &str) -> Result<Self> {
+    let url = db_url::db_url(name);
 
-    let options = sqlx::sqlite::SqliteConnectOptions::from_str(&url)?
-      .synchronous(SqliteSynchronous::Normal)
-      .create_if_missing(true);
+    if !sqlx::Postgres::database_exists(&url).await? {
+      Postgres::create_database(&url).await.unwrap();
+    }
 
-    let pool = SqlitePool::connect_with(options).await?;
+    let options = sqlx::postgres::PgConnectOptions::from_str(&url)?;
+
+    let pool = PgPool::connect_with(options).await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;
 
@@ -25,13 +25,13 @@ impl Db {
   async fn load_user<'a>(tx: &mut Transaction<'a>, discord_id: UserId) -> Result<Option<User>> {
     let discord_id = discord_id.store();
 
-    let row = sqlx::query!("SELECT * FROM users WHERE discord_id = ?", discord_id)
+    let row = sqlx::query!("SELECT * FROM users WHERE discord_id = $1", discord_id)
       .fetch_optional(&mut *tx)
       .await?;
 
     if let Some(user) = row {
       let prompt = sqlx::query!(
-        "SELECT * FROM prompts where recipient_discord_id = ?",
+        "SELECT * FROM prompts where recipient_discord_id = $1",
         discord_id,
       )
       .fetch_optional(tx)
@@ -67,7 +67,7 @@ impl Db {
     {
       let discord_id = discord_id.store();
 
-      sqlx::query!("INSERT INTO users(discord_id) VALUES(?)", discord_id)
+      sqlx::query!("INSERT INTO users(discord_id) VALUES($1)", discord_id)
         .execute(&mut tx)
         .await?;
     };
@@ -100,26 +100,26 @@ impl Db {
       FROM
         users AS potential_candidate
       WHERE
-        welcomed == TRUE
+        welcomed = TRUE
         AND
         bio IS NOT NULL
         AND
-        discord_id != ?
+        discord_id != $1
         AND
         NOT EXISTS (
           SELECT * FROM responses
-          WHERE discord_id == ? AND candidate_id == potential_candidate.discord_id
+          WHERE discord_id = $2 AND candidate_id = potential_candidate.discord_id
         )
         AND
         EXISTS (
           SELECT * FROM responses
-          WHERE discord_id == potential_candidate.discord_id AND candidate_id == ? AND response
+          WHERE discord_id = potential_candidate.discord_id AND candidate_id = $3 AND response
         )
         AND
         EXISTS (
           SELECT * FROM prompts
           WHERE
-            recipient_discord_id = potential_candidate.discord_id AND discriminant == ?
+            recipient_discord_id = potential_candidate.discord_id AND discriminant = $4
         )
       LIMIT 1",
       discord_id,
@@ -141,26 +141,26 @@ impl Db {
       FROM
         users AS potential_candidate
       WHERE
-        welcomed == TRUE
+        welcomed = TRUE
         AND
         bio IS NOT NULL
         AND
-        discord_id != ?
+        discord_id != $1
         AND
         NOT EXISTS (
           SELECT * FROM responses
-          WHERE discord_id == ? AND candidate_id == potential_candidate.discord_id
+          WHERE discord_id = $2 AND candidate_id = potential_candidate.discord_id
         )
         AND
         NOT EXISTS (
           SELECT * FROM responses
-          WHERE discord_id == potential_candidate.discord_id AND candidate_id == ? AND NOT response
+          WHERE discord_id = potential_candidate.discord_id AND candidate_id = $3 AND NOT response
         )
         AND
         EXISTS (
           SELECT * FROM prompts
           WHERE
-            recipient_discord_id = potential_candidate.discord_id AND discriminant == ?
+            recipient_discord_id = potential_candidate.discord_id AND discriminant = $4
         )
       LIMIT 1",
       discord_id,
@@ -182,9 +182,9 @@ impl Db {
       "SELECT
         candidate_id
       FROM
-        responses as outer
+        responses AS outer_responses
       WHERE
-        discord_id = ?
+        discord_id = $1
         AND
         response
         AND
@@ -193,9 +193,9 @@ impl Db {
         EXISTS (
           SELECT * FROM responses
           WHERE
-            discord_id = outer.candidate_id
+            discord_id = outer_responses.candidate_id
             AND
-            candidate_id = outer.discord_id
+            candidate_id = outer_responses.discord_id
             AND
             response
         )
@@ -258,7 +258,7 @@ impl Db {
         FROM
           responses
         WHERE
-          discord_id = ? AND candidate_id = ?
+          discord_id = $1 AND candidate_id = $2
         LIMIT 1",
         candidate_id,
         user_id,
@@ -283,7 +283,7 @@ impl Db {
         FROM
           prompts
         WHERE
-          recipient_discord_id = ?
+          recipient_discord_id = $1
         LIMIT 1",
         candidate_id,
       )
@@ -317,10 +317,16 @@ impl Db {
     let message_id = prompt_message.message_id.store();
 
     sqlx::query!(
-      "INSERT OR REPLACE INTO prompts
+      "INSERT INTO prompts
         (discriminant, payload, message_id, recipient_discord_id)
       VALUES
-        (?, ?, ?, ?)",
+        ($1, $2, $3, $4)
+      ON CONFLICT (recipient_discord_id) DO UPDATE SET
+        discriminant = $1,
+        payload = $2,
+        message_id = $3,
+        recipient_discord_id = $4
+      ",
       discriminant,
       payload,
       message_id,
@@ -338,7 +344,7 @@ impl Db {
     let discord_id = discord_id.store();
 
     sqlx::query!(
-      "UPDATE users SET welcomed = true WHERE discord_id = ?",
+      "UPDATE users SET welcomed = TRUE WHERE discord_id = $1",
       discord_id
     )
     .execute(tx)
@@ -351,7 +357,7 @@ impl Db {
     let discord_id = discord_id.store();
 
     sqlx::query!(
-      "UPDATE users SET bio = ? WHERE discord_id = ?",
+      "UPDATE users SET bio = $1 WHERE discord_id = $2",
       text,
       discord_id
     )
@@ -368,7 +374,8 @@ impl Db {
       sqlx::query!("SELECT COUNT(*) as count FROM users")
         .fetch_one(&self.pool)
         .await?
-        .count as u64,
+        .count
+        .unwrap_or(0) as u64,
     )
   }
 
@@ -410,7 +417,7 @@ impl Db {
   async fn bio(tx: &mut Transaction<'_>, id: UserId) -> Result<String> {
     let id_storage = id.store();
 
-    let row = sqlx::query!("SELECT bio from users where discord_id = ?", id_storage)
+    let row = sqlx::query!("SELECT bio from users where discord_id = $1", id_storage)
       .fetch_optional(tx)
       .await?;
 
@@ -430,10 +437,16 @@ impl Db {
     let candidate_id = candidate_id.store();
 
     sqlx::query!(
-      "INSERT OR REPLACE INTO responses
+      "INSERT INTO responses
         (discord_id, candidate_id, response, dismissed)
       VALUES
-        (?, ?, ?, FALSE)",
+        ($1, $2, $3, FALSE)
+      ON CONFLICT (discord_id, candidate_id) DO UPDATE SET
+        discord_id = $1,
+        candidate_id = $2,
+        response = $3,
+        dismissed = FALSE
+      ",
       user_id,
       candidate_id,
       response
@@ -453,7 +466,7 @@ impl Db {
     let match_id = match_id.store();
 
     sqlx::query!(
-      "UPDATE responses SET dismissed = TRUE WHERE discord_id = ? AND candidate_id = ?",
+      "UPDATE responses SET dismissed = TRUE WHERE discord_id = $1 AND candidate_id = $2",
       user_id,
       match_id
     )
@@ -520,10 +533,15 @@ impl Db {
     let recipient_id = recipient_id.store();
 
     sqlx::query!(
-      "INSERT OR REPLACE INTO prompts
+      "INSERT INTO prompts
         (discriminant, payload, message_id, recipient_discord_id)
       VALUES
-        (?, ?, ?, ?)",
+        ($1, $2, $3, $4)
+      ON CONFLICT (recipient_discord_id) DO UPDATE SET
+        discriminant = $1,
+        payload = $2,
+        message_id = $3,
+        recipient_discord_id = $4",
       discriminant,
       payload,
       message_id,
@@ -539,7 +557,7 @@ impl Db {
     let user = user.store();
     let candidate = candidate.store();
     let row = sqlx::query!(
-      "SELECT response FROM responses WHERE discord_id = ? AND candidate_id = ?",
+      "SELECT response FROM responses WHERE discord_id = $1 AND candidate_id = $2",
       user,
       candidate
     )
@@ -556,34 +574,34 @@ mod tests {
   use super::*;
 
   struct TestContext {
-    tmpdir:  TempDir,
     db:      Db,
-    db_path: PathBuf,
+    db_name: String,
   }
 
   impl TestContext {
     async fn new() -> Self {
-      let tmpdir = tempdir().unwrap();
+      static TEST_DATABASE_NUMBER: AtomicUsize = AtomicUsize::new(0);
 
-      let db_path = tmpdir.path().join("db.sqlite");
+      let test_database_number = TEST_DATABASE_NUMBER.fetch_add(1, Ordering::Relaxed);
 
-      let db = Db::connect(&db_path).await.unwrap();
+      let db_name = format!(
+        "quwue-test-{}-{}",
+        std::time::SystemTime::now()
+          .duration_since(std::time::SystemTime::UNIX_EPOCH)
+          .unwrap()
+          .as_millis(),
+        test_database_number,
+      );
 
-      TestContext {
-        tmpdir,
-        db,
-        db_path,
-      }
+      let db = Db::connect(&db_name).await.unwrap();
+
+      TestContext { db, db_name }
     }
   }
 
   #[tokio::test(flavor = "multi_thread")]
   async fn on_disk_database_is_persistant() {
-    let TestContext {
-      tmpdir: _tmpdir,
-      db,
-      db_path,
-    } = TestContext::new().await;
+    let TestContext { db, db_name } = TestContext::new().await;
 
     assert_eq!(db.user_count().await.unwrap(), 0);
 
@@ -593,7 +611,7 @@ mod tests {
 
     drop(db);
 
-    let db = Db::connect(&db_path).await.unwrap();
+    let db = Db::connect(&db_name).await.unwrap();
 
     assert_eq!(db.user_count().await.unwrap(), 1);
   }
@@ -890,7 +908,10 @@ mod tests {
 
     guard_unwrap!(let sqlx::Error::Database(error) = error);
 
-    assert_eq!(error.message(), "FOREIGN KEY constraint failed");
+    assert_eq!(
+      error.message(),
+      r#"insert or update on table "responses" violates foreign key constraint "responses_discord_id_fkey""#
+    );
   }
 
   #[tokio::test(flavor = "multi_thread")]
@@ -913,7 +934,10 @@ mod tests {
 
     guard_unwrap!(let sqlx::Error::Database(error) = error);
 
-    assert_eq!(error.message(), "FOREIGN KEY constraint failed");
+    assert_eq!(
+      error.message(),
+      r#"insert or update on table "responses" violates foreign key constraint "responses_discord_id_fkey""#
+    );
   }
 
   #[tokio::test(flavor = "multi_thread")]

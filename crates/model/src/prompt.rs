@@ -1,7 +1,6 @@
 use crate::common::*;
 
-use Emoji::*;
-use Prompt::*;
+use {Emoji::*, Prompt::*};
 
 /// NB. Prompt priority is determined by enum variant order.
 #[derive(Debug, EnumDiscriminants, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -42,8 +41,7 @@ impl Prompt {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use strum::IntoEnumIterator;
+  use {super::*, strum::IntoEnumIterator};
 
   #[test]
   fn priority() {

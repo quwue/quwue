@@ -1,15 +1,15 @@
 // stdlib
 pub(crate) use std::{
   convert::{Infallible, TryInto},
-  path::{Path, PathBuf},
+  path::PathBuf,
   str::FromStr,
 };
 
 // dependencies
-pub(crate) use ::{
+pub(crate) use {
   num_enum::TryFromPrimitiveError,
   snafu::{ResultExt, Snafu},
-  sqlx::{sqlite::SqliteSynchronous, SqlitePool},
+  sqlx::{migrate::MigrateDatabase, PgPool, Postgres},
   twilight_model::id::{MessageId, UserId},
 };
 
@@ -27,12 +27,14 @@ pub(crate) use crate::{db::Db, error::Error, update_tx::UpdateTx};
 
 // type aliases
 pub(crate) type Result<T, E = Error> = std::result::Result<T, E>;
-pub(crate) type Transaction<'a> = sqlx::Transaction<'a, sqlx::Sqlite>;
+pub(crate) type Transaction<'a> = sqlx::Transaction<'a, sqlx::Postgres>;
 
 #[cfg(test)]
 mod test {
-  pub(crate) use guard::guard_unwrap;
-  pub(crate) use tempfile::{tempdir, TempDir};
+  pub(crate) use {
+    guard::guard_unwrap,
+    std::sync::atomic::{AtomicUsize, Ordering},
+  };
 }
 
 #[cfg(test)]

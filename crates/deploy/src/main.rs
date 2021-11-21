@@ -1,6 +1,4 @@
-use cradle::prelude::*;
-use std::process::Command;
-use structopt::StructOpt;
+use {cradle::prelude::*, std::process::Command, structopt::StructOpt};
 
 #[derive(StructOpt)]
 struct Arguments {
@@ -12,7 +10,18 @@ impl Arguments {
   fn run(&self) {
     self.ssh("apt-get update");
 
-    self.ssh("apt-get install --yes build-essential");
+    self.ssh("apt-get install --yes build-essential postgresql");
+
+    eprintln!(
+      "Set IPv4 and IPv6 local connections to trust in /etc/postgresql/13/main/pg_hba.conf"
+    );
+    eprintln!();
+    eprintln!("# IPv4 local connections:");
+    eprintln!("host    all             all             127.0.0.1/32            trust");
+    eprintln!("# IPv6 local connections:");
+    eprintln!("host    all             all             ::1/128                 trust");
+
+    Command::new("bash").args(&["-c", "read"]).output().unwrap();
 
     self.ssh_check(
       "[[ -f rustup.sh ]]",
@@ -49,7 +58,7 @@ impl Arguments {
   }
 
   fn ssh(&self, command: &'static str) {
-    run!("ssh", format!("root@{}", self.host), Split(command))
+    run!("ssh", format!("root@{}", self.host), Split(command));
   }
 
   fn ssh_check(&self, check: &'static str, command: &'static str) {
